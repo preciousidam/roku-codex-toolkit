@@ -75,8 +75,8 @@
       "properties": {
         "action": { "const": "launch" },
         "channel_id": { "$ref": "#/$defs/nonBlankString" },
-        "content_id": { "type": "string" },
-        "media_type": { "type": "string" }
+        "content_id": { "type": ["string", "null"] },
+        "media_type": { "type": ["string", "null"] }
       }
     },
     "press": {

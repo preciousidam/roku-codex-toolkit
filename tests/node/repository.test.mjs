@@ -90,4 +90,21 @@ test("flow schemas and examples expose stable public contracts", () => {
     const invalid = { host, steps: [{ action: "screenshot", save: "screen.png" }] };
     assert.equal(validateScenario(invalid), false, host);
   }
+  assertSchemaValid(validateScenario, {
+    steps: [
+      { action: "launch", channel_id: "dev", content_id: null, media_type: null },
+      { action: "screenshot", save: "screen.png" },
+    ],
+  }, "nullable launch metadata");
+  for (const metadata of [
+    { content_id: 123 }, { content_id: {} }, { media_type: 123 }, { media_type: {} },
+  ]) {
+    const invalid = {
+      steps: [
+        { action: "launch", channel_id: "dev", ...metadata },
+        { action: "screenshot", save: "screen.png" },
+      ],
+    };
+    assert.equal(validateScenario(invalid), false, JSON.stringify(metadata));
+  }
 });
