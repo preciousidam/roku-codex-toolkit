@@ -102,6 +102,13 @@ class AtomicArtifact:
         self._parent_identity = _identity(parent.stat())
         self._parent_anchor: Optional[int] = _open_parent_anchor(parent)
         try:
+            if (
+                os.name != "nt"
+                and _identity(os.fstat(self._parent_anchor)) != self._parent_identity
+            ):
+                raise RuntimeError(
+                    f"{label} directory changed during setup: {requested.parent}"
+                )
             current_parent = requested.parent.resolve(strict=True)
             if (
                 current_parent != parent

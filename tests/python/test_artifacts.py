@@ -114,6 +114,28 @@ class AtomicArtifactTests(unittest.TestCase):
             finally:
                 artifact.cleanup()
 
+    @unittest.skipIf(os.name == "nt", "POSIX directory-descriptor identity test")
+    def test_substituted_parent_anchor_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            requested = root / "requested"
+            substitute = root / "substitute"
+            requested.mkdir()
+            substitute.mkdir()
+            substitute_anchor = artifacts._open_parent_anchor(substitute)
+
+            with mock.patch.object(
+                artifacts,
+                "_open_parent_anchor",
+                return_value=substitute_anchor,
+            ):
+                with self.assertRaisesRegex(RuntimeError, "directory changed during setup"):
+                    artifacts.AtomicArtifact(requested / "capture.log")
+
+            with self.assertRaises(OSError):
+                os.fstat(substitute_anchor)
+            self.assertEqual(list(substitute.iterdir()), [])
+
     @unittest.skipIf(os.name == "nt", "POSIX descriptor-relative replacement test")
     def test_parent_swap_during_replace_stays_in_anchored_directory(self):
         with tempfile.TemporaryDirectory() as temporary:
