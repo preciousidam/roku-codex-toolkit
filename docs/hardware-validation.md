@@ -1,6 +1,6 @@
 # Physical Roku validation matrix
 
-Status: **partially executed; v0.1.0 hardware gate remains blocked**. A physical run on 2026-08-11 covered queries, interaction delivery, launch, screenshot, console, confirmed sideload, and evidence-aware flow cases. Independent UI confirmation of the keypress and text-entry effects remains incomplete, so no complete hardware pass is claimed.
+Status: **complete for the v0.1.0 physical-device gate**. A physical run on 2026-08-11 covered queries, visually confirmed keypress and non-secret text entry, launch, screenshot, console, confirmed sideload, and evidence-aware flow cases. This is evidence for the recorded host/device combination only, not a claim about untested hardware.
 
 Run this matrix from one supported host first. Additional host/device combinations are useful evidence but are not required to prove every permutation. Before starting, record only non-sensitive metadata:
 
@@ -18,15 +18,15 @@ Do not put a device IP address, developer password, token, serial number, device
 - [x] Use an approved external test build and test account/state. Confirm the exact ZIP before sideloading; sideload replaces the current development channel.
 - [x] Create a private evidence directory outside the repository.
 - [x] Record device info and active-app query success; sanitize model and firmware into the result table, and keep raw XML private.
-- [ ] Send a harmless keypress and verify its expected effect independently. Delivery completed, but visual verification remains pending.
-- [ ] Focus a disposable text field, enter a non-secret marker, and verify the resulting text independently. A non-secret marker was delivered, but visual verification remains pending.
+- [x] Send a harmless keypress and verify its expected effect independently.
+- [x] Focus a disposable text field, enter a non-secret marker, and verify the resulting text independently. Never use real credentials.
 - [x] Launch the development channel or an approved public test channel/deep link; verify active-app state independently.
 - [x] Capture a screenshot, then visually inspect it. Capture success alone is not a UI pass.
 - [x] Capture a short BrightScript console window and confirm expected startup output is present. Keep the raw log private.
 - [x] Sideload the pre-confirmed development ZIP with `--yes`; require the installer success response, then independently query the active app.
 - [x] Run `examples/flow/hardware-pass.json`; require its query checkpoint to pass.
 - [x] Run `examples/flow/hardware-intentional-failure.json`; require the flow to fail because its impossible query checkpoint is absent. A command-only success is not a passing flow.
-- [ ] Remove or retain local artifacts according to the operator's private-data policy; commit only this sanitized result table.
+- [x] Retain local artifacts privately according to the operator's private-data policy; commit only this sanitized result table.
 
 ## Result record
 
@@ -35,7 +35,7 @@ Replace `Pending` only after observing the corresponding evidence. Use a local e
 | Host OS | Roku model | Roku OS/firmware | Scenario | Outcome | Sanitized artifact reference |
 | --- | --- | --- | --- | --- | --- |
 | macOS 26.5.2 | 4662RW | 15.3.4 | Device info and active app | Pass | `local-run-2026-08-11/item-01` |
-| macOS 26.5.2 | 4662RW | 15.3.4 | Keypress and disposable text entry | Partial: commands completed; independent UI confirmation pending | `local-run-2026-08-11/item-02` |
+| macOS 26.5.2 | 4662RW | 15.3.4 | Keypress and disposable text entry | Pass: before/after images visually confirmed navigation from foreground content to a disposable text field, visible non-secret marker entry, and keyboard focus; no credential submission | `local-run-2026-08-11/item-02` |
 | macOS 26.5.2 | 4662RW | 15.3.4 | Development-channel launch | Pass: active-app independently reported `dev` | `local-run-2026-08-11/item-03` |
 | macOS 26.5.2 | 4662RW | 15.3.4 | Screenshot capture plus visual review | Pass after confirmed sideload: valid private 1920×1080 image showed a complete foreground UI and visible focus; no broader UI correctness claimed | `local-run-2026-08-11/item-04` |
 | macOS 26.5.2 | 4662RW | 15.3.4 | BrightScript console capture | Pass: non-empty private capture; raw log not committed | `local-run-2026-08-11/item-05` |
