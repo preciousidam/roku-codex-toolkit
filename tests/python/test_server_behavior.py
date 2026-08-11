@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import os
+import queue
 import subprocess
 import sys
 import tempfile
@@ -104,7 +105,19 @@ class ServerBehaviorTests(unittest.TestCase):
             check=False,
         )
         self.assertIsNotNone(parent.stdout)
-        child_pid = int(parent.stdout.readline().strip())
+        pid_output = queue.Queue()
+        reader = threading.Thread(
+            target=lambda: pid_output.put(parent.stdout.readline()),
+            daemon=True,
+        )
+        reader.start()
+        try:
+            child_pid = int(
+                pid_output.get(timeout=server.WINDOWS_TERMINATION_TIMEOUT).strip()
+            )
+        except queue.Empty:
+            server.terminate_process(parent)
+            self.fail("Timed out waiting for the Windows child-process PID.")
         self.addCleanup(
             subprocess.run,
             ["taskkill", "/PID", str(child_pid), "/T", "/F"],
