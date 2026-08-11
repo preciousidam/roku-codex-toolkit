@@ -2,9 +2,12 @@
   "name": "roku-codex-toolkit",
   "version": "0.1.0",
   "private": true,
+  "license": "Apache-2.0",
   "type": "module",
   "scripts": {
     "setup": "node scripts/setup-roku-toolkit.mjs",
+    "test:node": "node scripts/validate-roku-toolkit.mjs --node-only",
+    "test:python": "node scripts/validate-roku-toolkit.mjs --python-only",
     "validate": "node scripts/validate-roku-toolkit.mjs"
   },
   "engines": {

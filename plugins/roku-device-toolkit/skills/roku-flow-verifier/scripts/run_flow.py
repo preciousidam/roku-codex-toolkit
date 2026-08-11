@@ -9,7 +9,6 @@ import math
 import os
 import subprocess
 import sys
-import tempfile
 import time
 from pathlib import Path
 from typing import Optional
@@ -19,6 +18,7 @@ DEFAULT_DEVICE_TOOL = Path(__file__).resolve().parents[2] / "roku-device-operato
 DEVICE_TOOL = Path(os.environ.get("ROKU_DEVICE_TOOL", str(DEFAULT_DEVICE_TOOL))).expanduser()
 PLUGIN_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PLUGIN_ROOT / "scripts"))
+from roku_artifacts import write_private_text  # noqa: E402
 from roku_config import resolve_target  # noqa: E402
 
 QUERY_KINDS = {"info", "apps", "active-app", "player"}
@@ -68,17 +68,9 @@ def ensure_private_directory(path: Path) -> None:
         os.chmod(directory, 0o700)
 
 
-def write_private_text(path: Path, value: str) -> None:
+def write_flow_text(root: Path, path: Path, value: str) -> None:
     ensure_private_directory(path.parent)
-    descriptor, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
-    temporary_path = Path(temporary_name)
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            handle.write(value)
-        os.chmod(temporary_path, 0o600)
-        os.replace(temporary_path, path)
-    finally:
-        temporary_path.unlink(missing_ok=True)
+    write_private_text(path, value, "Flow artifact", allowed_root=root)
 
 
 def bounded_delay(value: object) -> float:
@@ -261,7 +253,7 @@ def main() -> None:
             "verification_error": "Flow preflight failed before any device actions were executed.",
         }
         report_path = evidence / "report.json"
-        write_private_text(report_path, json.dumps(report, indent=2) + "\n")
+        write_flow_text(evidence, report_path, json.dumps(report, indent=2) + "\n")
         print(report_path)
         raise SystemExit(1)
 
@@ -287,7 +279,7 @@ def main() -> None:
                 completed = subprocess.run(command, text=True, capture_output=True, check=False)
             output = completed.stdout
             if capture_path is not None and not args.dry_run and completed.returncode == 0:
-                write_private_text(capture_path, output)
+                write_flow_text(evidence, capture_path, output)
                 result["artifact"] = str(capture_path)
             expected = step.get("contains")
             passed = not args.dry_run and completed.returncode == 0 and (expected is None or str(expected) in output)
@@ -356,7 +348,7 @@ def main() -> None:
             "for automated verification."
         )
     report_path = evidence / "report.json"
-    write_private_text(report_path, json.dumps(report, indent=2) + "\n")
+    write_flow_text(evidence, report_path, json.dumps(report, indent=2) + "\n")
     print(report_path)
     if args.dry_run:
         raise SystemExit(0)

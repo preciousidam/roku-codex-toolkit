@@ -1,0 +1,11 @@
+{
+  "name": "Hardware gate: demonstrate a failed evidence checkpoint",
+  "steps": [
+    {
+      "action": "query",
+      "kind": "active-app",
+      "contains": "ROKU_TOOLKIT_INTENTIONAL_MISSING_CHECKPOINT_7B2E",
+      "save": "active-app.xml"
+    }
+  ]
+}

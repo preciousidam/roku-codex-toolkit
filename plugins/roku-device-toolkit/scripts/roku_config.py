@@ -9,15 +9,43 @@ import json
 import os
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 from typing import Any, Optional
+
+SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+from roku_artifacts import write_private_text  # noqa: E402
 
 
 CONFIG_ENV = "ROKU_TOOLKIT_CONFIG"
 DEFAULT_CONFIG = Path("~/.config/roku-device-toolkit/config.json").expanduser()
 KEYCHAIN_SERVICE = "roku-device-toolkit"
 KEYCHAIN_ACCOUNT = "rokudev"
+KEYCHAIN_TIMEOUT_SECONDS = 15
+
+def ensure_private_directory(path: Path, harden_existing: bool = False) -> None:
+    """Create missing directories privately without changing an existing parent."""
+    if path.is_symlink():
+        raise RuntimeError(f"Roku configuration directory must not be a symlink: {path}")
+    missing = []
+    current = path
+    while not current.exists():
+        if current.parent == current:
+            raise RuntimeError(
+                f"Unable to reach an existing parent for Roku configuration directory: {path}"
+            )
+        missing.append(current)
+        current = current.parent
+    if not current.is_dir():
+        raise RuntimeError(f"Roku configuration parent is not a directory: {current}")
+    path.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if os.name == "posix":
+        for directory in missing:
+            os.chmod(directory, 0o700)
+        if harden_existing and not missing:
+            os.chmod(path, 0o700)
 
 
 def config_path() -> Path:
@@ -59,19 +87,17 @@ def effective_config_path() -> Path:
 def save_target(target: str) -> Path:
     value = validate_target(target)
     path = config_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_private_directory(
+        path.parent,
+        harden_existing=not bool(os.environ.get(CONFIG_ENV, "").strip()),
+    )
     data = load_config()
     data["target"] = value
-    descriptor, temporary_name = tempfile.mkstemp(prefix="config-", suffix=".json", dir=path.parent)
-    temporary = Path(temporary_name)
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            json.dump(data, handle, indent=2)
-            handle.write("\n")
-        os.chmod(temporary, 0o600)
-        os.replace(temporary, path)
-    finally:
-        temporary.unlink(missing_ok=True)
+    write_private_text(
+        path,
+        json.dumps(data, indent=2) + "\n",
+        "Roku configuration",
+    )
     return path
 
 
@@ -94,12 +120,16 @@ def keychain_password() -> str:
         return os.environ["ROKU_DEV_PASSWORD"]
     if sys.platform != "darwin":
         return ""
-    completed = subprocess.run(
-        ["security", "find-generic-password", "-a", KEYCHAIN_ACCOUNT, "-s", KEYCHAIN_SERVICE, "-w"],
-        text=True,
-        capture_output=True,
-        check=False,
-    )
+    try:
+        completed = subprocess.run(
+            ["security", "find-generic-password", "-a", KEYCHAIN_ACCOUNT, "-s", KEYCHAIN_SERVICE, "-w"],
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=KEYCHAIN_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
     if completed.returncode == 0:
         return completed.stdout.rstrip("\n")
     return ""
@@ -110,16 +140,20 @@ def store_keychain_password(password: str) -> None:
         raise RuntimeError("Secure password setup currently requires macOS Keychain.")
     if not password:
         raise ValueError("Developer password cannot be empty.")
-    completed = subprocess.run(
-        [
-            "security", "add-generic-password", "-U", "-a", KEYCHAIN_ACCOUNT,
-            "-s", KEYCHAIN_SERVICE, "-l", "Roku developer password", "-w",
-        ],
-        input=password + "\n",
-        text=True,
-        capture_output=True,
-        check=False,
-    )
+    try:
+        completed = subprocess.run(
+            [
+                "security", "add-generic-password", "-U", "-a", KEYCHAIN_ACCOUNT,
+                "-s", KEYCHAIN_SERVICE, "-l", "Roku developer password", "-w",
+            ],
+            input=password + "\n",
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=KEYCHAIN_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise RuntimeError("Unable to store the password in macOS Keychain.") from error
     if completed.returncode != 0:
         raise RuntimeError(completed.stderr.strip() or "Unable to store the password in macOS Keychain.")
 

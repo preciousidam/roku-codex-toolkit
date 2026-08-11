@@ -11,7 +11,6 @@ import select
 import socket
 import subprocess
 import sys
-import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -23,6 +22,7 @@ from typing import Optional
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PLUGIN_ROOT / "scripts"))
+from roku_artifacts import AtomicArtifact, write_private_text  # noqa: E402
 from roku_config import keychain_password, resolve_target  # noqa: E402
 
 
@@ -142,34 +142,30 @@ def curl_digest(host: str, path: str, extra: list[str], output: Optional[Path] =
 def take_screenshot(host: str, output: Path) -> None:
     if output.suffix.lower() not in {".jpg", ".jpeg", ".png"}:
         raise SystemExit("Screenshot output must end in .jpg, .jpeg, or .png.")
-    if not output.parent.exists():
-        raise SystemExit(f"Output directory does not exist: {output.parent}")
-    if output.is_dir():
-        raise SystemExit(f"Screenshot output must be a file path, not a directory: {output}")
-    curl_digest(host, "/plugin_inspect", ["--form", "mysubmit=Screenshot"])
-    candidates = ["/pkgs/dev.png"] if output.suffix.lower() == ".png" else ["/pkgs/dev.jpg"]
-    descriptor, temporary_name = tempfile.mkstemp(prefix=f".{output.name}.", dir=output.parent)
-    os.close(descriptor)
-    temporary_path = Path(temporary_name)
     try:
-        for candidate in candidates:
-            try:
-                curl_digest(host, candidate, [], temporary_path)
-                header = temporary_path.read_bytes()[:8]
-                expected_image = (
-                    header.startswith(b"\x89PNG\r\n\x1a\n")
-                    if output.suffix.lower() == ".png"
-                    else header.startswith(b"\xff\xd8\xff")
-                )
-                if expected_image:
-                    os.chmod(temporary_path, 0o600)
-                    os.replace(temporary_path, output)
-                    print(output.resolve())
-                    return
-            except SystemExit:
-                continue
-    finally:
-        temporary_path.unlink(missing_ok=True)
+        artifact = AtomicArtifact(output, "Screenshot output")
+    except (ValueError, OSError) as error:
+        raise SystemExit(str(error)) from error
+    with artifact:
+        curl_digest(host, "/plugin_inspect", ["--form", "mysubmit=Screenshot"])
+        candidate = "/pkgs/dev.png" if output.suffix.lower() == ".png" else "/pkgs/dev.jpg"
+        try:
+            curl_digest(host, candidate, [], artifact.path_for_external_writer())
+            header = artifact.temporary.read_bytes()[:8]
+            expected_image = (
+                header.startswith(b"\x89PNG\r\n\x1a\n")
+                if output.suffix.lower() == ".png"
+                else header.startswith(b"\xff\xd8\xff")
+            )
+            if expected_image:
+                try:
+                    destination = artifact.commit()
+                except (OSError, RuntimeError, ValueError) as error:
+                    raise SystemExit(str(error)) from error
+                print(destination)
+                return
+        except OSError:
+            pass
     raise SystemExit("Screenshot was requested, but no valid image could be downloaded.")
 
 
@@ -189,29 +185,15 @@ def sideload(host: str, archive: Path, confirmed: bool) -> None:
     print(f"Sideload installed successfully: {archive.resolve()}")
 
 
-def write_private_text(path: Path, value: str) -> None:
-    descriptor, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
-    temporary_path = Path(temporary_name)
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            handle.write(value)
-        os.chmod(temporary_path, 0o600)
-        os.replace(temporary_path, path)
-    finally:
-        temporary_path.unlink(missing_ok=True)
-
-
 def collect_logs(host: str, seconds: float, output: Optional[Path]) -> None:
-    temporary_path: Optional[Path] = None
+    artifact: Optional[AtomicArtifact] = None
     output_handle = None
     if output is not None:
-        if not output.parent.exists():
-            raise SystemExit(f"Output directory does not exist: {output.parent}")
-        if output.is_dir():
-            raise SystemExit(f"Log output must be a file path, not a directory: {output}")
-        descriptor, temporary_name = tempfile.mkstemp(prefix=f".{output.name}.", dir=output.parent)
-        temporary_path = Path(temporary_name)
-        output_handle = os.fdopen(descriptor, "wb")
+        try:
+            artifact = AtomicArtifact(output, "Log output")
+            output_handle = artifact.open_binary()
+        except (ValueError, OSError) as error:
+            raise SystemExit(str(error)) from error
     disconnected_early = False
     capture_error: Optional[OSError] = None
     bytes_written = 0
@@ -240,22 +222,26 @@ def collect_logs(host: str, seconds: float, output: Optional[Path]) -> None:
         if output_handle is not None:
             output_handle.close()
     if capture_error is not None:
-        if temporary_path is not None:
+        if artifact is not None:
             if bytes_written:
-                os.chmod(temporary_path, 0o600)
-                os.replace(temporary_path, output)
-                print(output.resolve())
+                try:
+                    print(artifact.commit())
+                except (OSError, RuntimeError, ValueError) as error:
+                    artifact.cleanup()
+                    raise SystemExit(str(error)) from error
             else:
-                temporary_path.unlink(missing_ok=True)
+                artifact.cleanup()
         detail = " Partial logs were preserved." if bytes_written else ""
         raise SystemExit(f"Unable to read BrightScript console at {host}:8085: {capture_error}.{detail}") from capture_error
-    if temporary_path is not None:
+    if artifact is not None:
         if disconnected_early and bytes_written == 0:
-            temporary_path.unlink(missing_ok=True)
+            artifact.cleanup()
         else:
-            os.chmod(temporary_path, 0o600)
-            os.replace(temporary_path, output)
-            print(output.resolve())
+            try:
+                print(artifact.commit())
+            except (OSError, RuntimeError, ValueError) as error:
+                artifact.cleanup()
+                raise SystemExit(str(error)) from error
     if disconnected_early:
         detail = "partial logs were preserved" if bytes_written else "no logs were captured; any prior output was preserved"
         raise SystemExit(

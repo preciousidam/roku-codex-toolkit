@@ -37,10 +37,20 @@ npm run validate
 
 Validation does not require a physical Roku. Device-dependent operations should be verified separately on hardware.
 
+The test suite runs on macOS, Linux, and Windows in CI. That establishes host-side portability only; it is not a claim that every operation has been exercised against Roku hardware from every host OS.
+
+## Project status
+
+This repository is stabilizing toward v0.1.0. See [the release boundary](docs/v0.1.0.md), [stabilization audit](docs/stabilization-audit.md), [hardware validation matrix](docs/hardware-validation.md), and [contributor guide](CONTRIBUTING.md).
+
+## Roku tooling landscape
+
+The toolkit complements editor-oriented Roku tooling: it gives Codex bounded device operations, evidence-aware flow execution, and repository review workflows. It does not replace an editor, language server, debugger, packaging toolchain, or Roku's developer portal. See [the tooling comparison](docs/tooling-comparison.md).
+
 ## Security
 
 Do not commit Roku developer passwords, captured console logs, screenshots, or flow evidence. See [SECURITY.md](SECURITY.md) for reporting guidance.
 
-## License status
+## License
 
-An open-source license has not yet been selected. Until a license is added, copyright remains with the author and reuse rights are not granted beyond viewing the public source.
+Licensed under the [Apache License 2.0](LICENSE). The selection rationale is documented in [the Apache-2.0 versus MIT evaluation](docs/license-evaluation.md).
