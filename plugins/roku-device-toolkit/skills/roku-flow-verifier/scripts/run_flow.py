@@ -225,9 +225,10 @@ def main() -> None:
             })
         except Exception as error:
             prepared_steps.append((None, None, None))
+            invalid_action = step.get("action") if isinstance(step, dict) else None
             invalid_result = {
                 "index": index,
-                "action": step.get("action") if isinstance(step, dict) else None,
+                "action": invalid_action if isinstance(invalid_action, str) else None,
                 "checkpoint": is_verification_checkpoint(step),
                 "passed": False,
                 "status": "invalid",

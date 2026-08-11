@@ -27,6 +27,13 @@ class FlowCliTests(unittest.TestCase):
         report_path = evidence / "report.json"
         return completed, json.loads(report_path.read_text()) if report_path.exists() else None
 
+    def assert_report_schema(self, report_path):
+        validation = subprocess.run(
+            ["node", str(SCHEMA_VALIDATOR), str(REPORT_SCHEMA), str(report_path)],
+            text=True, capture_output=True, timeout=20,
+        )
+        self.assertEqual(validation.returncode, 0, validation.stderr)
+
     def test_dry_run_never_claims_verification(self):
         with tempfile.TemporaryDirectory() as temporary:
             completed, report = self.run_flow(
@@ -37,23 +44,20 @@ class FlowCliTests(unittest.TestCase):
             self.assertFalse(report["verified"])
             self.assertFalse(report["passed"])
             self.assertEqual(report["steps"][0]["status"], "skipped")
-            validation = subprocess.run(
-                ["node", str(SCHEMA_VALIDATOR), str(REPORT_SCHEMA),
-                 str(Path(temporary) / "evidence" / "report.json")],
-                text=True, capture_output=True, timeout=20,
-            )
-            self.assertEqual(validation.returncode, 0, validation.stderr)
+            self.assert_report_schema(Path(temporary) / "evidence" / "report.json")
 
     def test_preflight_reports_every_invalid_step_before_actions(self):
         with tempfile.TemporaryDirectory() as temporary:
             completed, report = self.run_flow(
                 {"steps": [{"action": "press", "keys": [None]}, None,
-                           {"action": "launch", "channel_id": None}]},
+                           {"action": "launch", "channel_id": None}, {"action": 123}]},
                 Path(temporary) / "evidence",
             )
             self.assertNotEqual(completed.returncode, 0)
-            self.assertEqual(len(report["steps"]), 3)
+            self.assertEqual(len(report["steps"]), 4)
             self.assertTrue(all(step["status"] == "invalid" for step in report["steps"]))
+            self.assertIsNone(report["steps"][3]["action"])
+            self.assert_report_schema(Path(temporary) / "evidence" / "report.json")
 
     def test_unknown_fields_and_non_boolean_continuation_are_rejected(self):
         cases = (
