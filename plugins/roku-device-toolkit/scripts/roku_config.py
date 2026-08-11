@@ -28,6 +28,10 @@ def ensure_private_directory(path: Path, harden_existing: bool = False) -> None:
     missing = []
     current = path
     while not current.exists():
+        if current.parent == current:
+            raise RuntimeError(
+                f"Unable to reach an existing parent for Roku configuration directory: {path}"
+            )
         missing.append(current)
         current = current.parent
     if not current.is_dir():

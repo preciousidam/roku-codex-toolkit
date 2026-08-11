@@ -76,6 +76,12 @@ class ConfigurationTests(unittest.TestCase):
                  self.assertRaises(RuntimeError):
                 config.save_target("192.168.1.20")
 
+    def test_unavailable_filesystem_anchor_is_rejected(self):
+        path = Path("/unavailable/roku/config")
+        with mock.patch.object(Path, "exists", return_value=False), \
+             self.assertRaisesRegex(RuntimeError, "existing parent"):
+            config.ensure_private_directory(path)
+
 
 class RepositoryTests(unittest.TestCase):
     def test_all_python_sources_parse(self):
