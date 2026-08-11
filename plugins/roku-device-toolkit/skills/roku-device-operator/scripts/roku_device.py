@@ -150,7 +150,7 @@ def take_screenshot(host: str, output: Path) -> None:
         curl_digest(host, "/plugin_inspect", ["--form", "mysubmit=Screenshot"])
         candidate = "/pkgs/dev.png" if output.suffix.lower() == ".png" else "/pkgs/dev.jpg"
         try:
-            curl_digest(host, candidate, [], artifact.close_for_external_writer())
+            curl_digest(host, candidate, [], artifact.path_for_external_writer())
             header = artifact.temporary.read_bytes()[:8]
             expected_image = (
                 header.startswith(b"\x89PNG\r\n\x1a\n")

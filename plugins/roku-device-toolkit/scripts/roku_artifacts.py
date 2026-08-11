@@ -68,23 +68,17 @@ class AtomicArtifact:
     def open_text(self) -> IO[str]:
         if self._descriptor is None:
             raise RuntimeError("Artifact staging descriptor is already closed.")
-        descriptor = self._descriptor
-        self._descriptor = None
-        return os.fdopen(descriptor, "w", encoding="utf-8")
+        return os.fdopen(os.dup(self._descriptor), "w", encoding="utf-8")
 
     def open_binary(self) -> IO[bytes]:
         if self._descriptor is None:
             raise RuntimeError("Artifact staging descriptor is already closed.")
-        descriptor = self._descriptor
-        self._descriptor = None
-        return os.fdopen(descriptor, "wb")
+        return os.fdopen(os.dup(self._descriptor), "wb")
 
-    def close_for_external_writer(self) -> Path:
-        self._close_descriptor()
+    def path_for_external_writer(self) -> Path:
         return self.temporary
 
     def commit(self) -> Path:
-        self._close_descriptor()
         try:
             current_parent = self.destination.parent.resolve(strict=True)
         except OSError as error:
@@ -96,10 +90,18 @@ class AtomicArtifact:
                 f"{self._label} directory changed before commit: {self.destination.parent}"
             )
         self._validate_destination()
+        if self._descriptor is None:
+            raise RuntimeError(f"{self._label} staging descriptor closed before commit.")
         temporary_status = self.temporary.lstat()
-        if not stat.S_ISREG(temporary_status.st_mode) or _identity(temporary_status) != self._temporary_identity:
+        open_status = os.fstat(self._descriptor)
+        if (
+            not stat.S_ISREG(temporary_status.st_mode)
+            or _identity(temporary_status) != _identity(open_status)
+            or _identity(open_status) != self._temporary_identity
+        ):
             raise RuntimeError(f"{self._label} staging file changed before commit.")
         os.chmod(self.temporary, 0o600)
+        self._close_descriptor()
         os.replace(self.temporary, self.destination)
         self._committed = True
         return self.destination

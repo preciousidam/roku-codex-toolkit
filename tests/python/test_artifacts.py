@@ -102,7 +102,7 @@ class AtomicArtifactTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             destination = Path(temporary) / "capture.log"
             artifact = artifacts.AtomicArtifact(destination)
-            staged = artifact.close_for_external_writer()
+            staged = artifact.path_for_external_writer()
             staged.unlink()
             staged.write_text("replacement", encoding="utf-8")
             try:
