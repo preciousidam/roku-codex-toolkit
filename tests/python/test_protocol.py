@@ -1,6 +1,9 @@
 import json
+import queue
 import subprocess
 import sys
+import threading
+import time
 import unittest
 from pathlib import Path
 
@@ -19,12 +22,56 @@ class ProtocolTests(unittest.TestCase):
         )) + "\n[]\n{bad\n"
 
     def assert_protocol(self, command):
-        completed = subprocess.run(command, input=self.messages(), text=True, capture_output=True, timeout=20)
-        self.assertEqual(completed.returncode, 0, completed.stderr)
-        responses = [json.loads(line) for line in completed.stdout.splitlines()]
+        process = subprocess.Popen(
+            command,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        lines = queue.Queue()
+
+        def read_responses():
+            for line in process.stdout:
+                lines.put(line)
+            lines.put(None)
+
+        reader = threading.Thread(target=read_responses, daemon=True)
+        reader.start()
+        responses = []
+        try:
+            process.stdin.write(self.messages())
+            process.stdin.flush()
+            deadline = time.monotonic() + 20
+            while len(responses) < 6:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    self.fail(f"Timed out waiting for protocol responses; received: {responses}")
+                try:
+                    line = lines.get(timeout=remaining)
+                except queue.Empty:
+                    self.fail(f"Timed out waiting for protocol responses; received: {responses}")
+                if line is None:
+                    self.fail(f"MCP server exited before all responses; received: {responses}")
+                responses.append(json.loads(line))
+            process.stdin.close()
+            return_code = process.wait(timeout=10)
+            stderr = process.stderr.read()
+            self.assertEqual(return_code, 0, stderr)
+        finally:
+            if process.stdin and not process.stdin.closed:
+                process.stdin.close()
+            if process.poll() is None:
+                process.kill()
+                process.wait(timeout=10)
+            reader.join(timeout=1)
+            process.stdout.close()
+            process.stderr.close()
+
         by_id = {item.get("id"): item for item in responses if item.get("id") is not None}
         self.assertEqual(by_id[1]["result"]["protocolVersion"], "2025-06-18")
         self.assertEqual(by_id[1]["result"]["serverInfo"]["name"], "roku-device-toolkit")
+        self.assertIn("result", by_id[2], by_id[2])
         tools = by_id[2]["result"]["tools"]
         self.assertEqual(len(tools), 13)
         self.assertEqual(by_id[4]["error"]["code"], -32600)

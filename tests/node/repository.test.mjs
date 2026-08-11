@@ -26,7 +26,7 @@ test("five skills have valid frontmatter", () => {
     .map((name) => path.join(pluginRoot, "skills", name, "SKILL.md")));
   assert.equal(skills.length, 5);
   for (const file of skills) {
-    const source = fs.readFileSync(file, "utf8");
+    const source = fs.readFileSync(file, "utf8").replaceAll("\r\n", "\n");
     assert.ok(source.startsWith("---\n"));
     assert.match(source, /\nname: [a-z0-9-]+\n/);
     assert.match(source, /\ndescription: .+\n/);
