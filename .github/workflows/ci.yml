@@ -24,4 +24,5 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
+      - run: npm ci
       - run: npm run validate

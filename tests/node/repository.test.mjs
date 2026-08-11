@@ -4,6 +4,8 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { assertSchemaValid, compileSchema } from "./schema-validator.mjs";
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const pluginRoots = ["roku-device-toolkit", "roku-engineering"].map((name) => path.join(root, "plugins", name));
 const readJson = (file) => JSON.parse(fs.readFileSync(file, "utf8"));
@@ -44,6 +46,8 @@ test("flow schemas and examples expose stable public contracts", () => {
   const references = path.join(pluginRoots[0], "skills", "roku-flow-verifier", "references");
   const scenarioSchema = readJson(path.join(references, "flow-scenario.schema.json"));
   const reportSchema = readJson(path.join(references, "flow-report.schema.json"));
+  const validateScenario = compileSchema(scenarioSchema);
+  compileSchema(reportSchema);
   assert.equal(scenarioSchema.$schema, "https://json-schema.org/draft/2020-12/schema");
   assert.equal(reportSchema.$schema, "https://json-schema.org/draft/2020-12/schema");
   assert.deepEqual(
@@ -56,9 +60,12 @@ test("flow schemas and examples expose stable public contracts", () => {
   );
   for (const name of fs.readdirSync(path.join(root, "examples", "flow"))) {
     const example = readJson(path.join(root, "examples", "flow", name));
-    assert.ok(Array.isArray(example.steps) && example.steps.length > 0, name);
-    for (const step of example.steps) {
-      assert.ok(scenarioSchema.$defs[step.action], `${name}: ${step.action}`);
-    }
+    assertSchemaValid(validateScenario, example, name);
+  }
+  for (const save of ["../escape.jpg", "/tmp/output.jpg", "C:\\output.jpg", "report.json"]) {
+    const invalid = {
+      steps: [{ action: "query", kind: "active-app", contains: "dev", save }],
+    };
+    assert.equal(validateScenario(invalid), false, save);
   }
 });

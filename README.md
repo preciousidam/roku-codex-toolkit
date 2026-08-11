@@ -21,6 +21,7 @@ The repository intentionally excludes product-specific authentication, entitleme
 ```bash
 git clone https://github.com/preciousidam/roku-codex-toolkit.git
 cd roku-codex-toolkit
+npm ci
 npm run validate
 npm run setup
 ```

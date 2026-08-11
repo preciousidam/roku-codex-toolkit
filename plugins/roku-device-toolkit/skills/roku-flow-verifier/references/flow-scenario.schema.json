@@ -22,7 +22,10 @@
           {
             "type": "object",
             "required": ["action", "contains"],
-            "properties": { "action": { "const": "query" } }
+            "properties": {
+              "action": { "const": "query" },
+              "contains": { "$ref": "#/$defs/nonBlankString" }
+            }
           }
         ]
       },
@@ -35,7 +38,8 @@
       "pattern": "\\S"
     },
     "artifactPath": {
-      "allOf": [{ "$ref": "#/$defs/nonBlankString" }],
+      "type": "string",
+      "pattern": "^(?=.*\\S)(?![\\\\/])(?![A-Za-z]:)(?!\\.$)(?!\\.\\.(?:[\\\\/]|$))(?!.*[\\\\/]\\.\\.(?:[\\\\/]|$))(?![rR][eE][pP][oO][rR][tT]\\.[jJ][sS][oO][nN](?:[\\\\/]|$)).+$",
       "description": "A relative path contained by the evidence directory. report.json is reserved."
     },
     "step": {
@@ -101,6 +105,7 @@
       "properties": {
         "action": { "const": "screenshot" },
         "save": {
+          "type": "string",
           "allOf": [{ "$ref": "#/$defs/artifactPath" }],
           "pattern": "\\.[jJ][pP](?:[eE])?[gG]$"
         }

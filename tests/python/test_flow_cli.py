@@ -10,6 +10,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 FLOW = ROOT / "plugins/roku-device-toolkit/skills/roku-flow-verifier/scripts/run_flow.py"
 DEVICE = ROOT / "plugins/roku-device-toolkit/skills/roku-device-operator/scripts/roku_device.py"
+REPORT_SCHEMA = ROOT / "plugins/roku-device-toolkit/skills/roku-flow-verifier/references/flow-report.schema.json"
+SCHEMA_VALIDATOR = ROOT / "tests/node/schema-validator.mjs"
 
 
 class FlowCliTests(unittest.TestCase):
@@ -35,6 +37,12 @@ class FlowCliTests(unittest.TestCase):
             self.assertFalse(report["verified"])
             self.assertFalse(report["passed"])
             self.assertEqual(report["steps"][0]["status"], "skipped")
+            validation = subprocess.run(
+                ["node", str(SCHEMA_VALIDATOR), str(REPORT_SCHEMA),
+                 str(Path(temporary) / "evidence" / "report.json")],
+                text=True, capture_output=True, timeout=20,
+            )
+            self.assertEqual(validation.returncode, 0, validation.stderr)
 
     def test_preflight_reports_every_invalid_step_before_actions(self):
         with tempfile.TemporaryDirectory() as temporary:
