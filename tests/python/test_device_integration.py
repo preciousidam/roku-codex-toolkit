@@ -1,3 +1,4 @@
+import hashlib
 import http.server
 import importlib.util
 import shutil
@@ -6,6 +7,7 @@ import tempfile
 import threading
 import time
 import unittest
+import urllib.request
 from pathlib import Path
 from unittest import mock
 
@@ -73,12 +75,41 @@ class DeviceIntegrationTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which("curl"), "curl is required for digest integration")
     def test_digest_authentication_uses_challenge_response(self):
         authorization = []
+        synthetic_password = 'integration-only-\\"password'
+
+        def valid_digest(header):
+            if not header or not header.startswith("Digest "):
+                return False
+            fields = urllib.request.parse_keqv_list(
+                urllib.request.parse_http_list(header.removeprefix("Digest "))
+            )
+            required = {
+                "username", "realm", "nonce", "uri", "response", "qop", "nc", "cnonce"
+            }
+            if not required.issubset(fields):
+                return False
+            if fields["username"] != "rokudev" or fields["realm"] != "rokudev":
+                return False
+            if (
+                fields["nonce"] != "test-nonce"
+                or fields["qop"] != "auth"
+                or fields["uri"] != "/plugin_inspect"
+            ):
+                return False
+            ha1 = hashlib.md5(
+                f'rokudev:rokudev:{synthetic_password}'.encode()
+            ).hexdigest()
+            ha2 = hashlib.md5(f'GET:{fields["uri"]}'.encode()).hexdigest()
+            expected = hashlib.md5(
+                f'{ha1}:test-nonce:{fields["nc"]}:{fields["cnonce"]}:auth:{ha2}'.encode()
+            ).hexdigest()
+            return fields["response"] == expected
 
         class Handler(QuietHandler):
             def do_GET(self):
                 header = self.headers.get("Authorization")
                 authorization.append(header)
-                if not header:
+                if not valid_digest(header):
                     self.send_response(401)
                     self.send_header(
                         "WWW-Authenticate",
@@ -94,7 +125,6 @@ class DeviceIntegrationTests(unittest.TestCase):
                 self.wfile.write(payload)
 
         server = self.serve(Handler)
-        synthetic_password = "integration-only-password"
         with mock.patch.object(
             device,
             "trusted_developer_host",
