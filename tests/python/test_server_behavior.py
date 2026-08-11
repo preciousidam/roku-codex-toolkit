@@ -1,0 +1,115 @@
+import importlib.util
+import json
+import os
+import tempfile
+import threading
+import time
+import unittest
+from pathlib import Path
+from unittest import mock
+
+ROOT = Path(__file__).resolve().parents[2]
+PATH = ROOT / "plugins/roku-device-toolkit/mcp/server.py"
+SPEC = importlib.util.spec_from_file_location("roku_server_behavior", PATH)
+server = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(server)
+
+
+class ServerBehaviorTests(unittest.TestCase):
+    def tearDown(self):
+        server.IN_FLIGHT.clear()
+        server.PENDING_REQUESTS.clear()
+        server.CANCELLED_REQUESTS.clear()
+        server.DEVICE_MUTATION_LOCKS.clear()
+
+    def test_command_construction_uses_separator_and_bounded_timeouts(self):
+        executions = []
+        result = {"command_succeeded": True, "return_code": 0, "stdout": "", "stderr": ""}
+        with mock.patch.object(server, "host_args", return_value=["--host", "roku"]), \
+             mock.patch.object(server, "execute", side_effect=lambda command, timeout=30, **_kwargs: executions.append((command, timeout)) or result):
+            server.call_tool("enter_text", {"text": "-hello"})
+            server.call_tool("press", {"keys": ["-h"]})
+            server.call_tool("launch", {"channel_id": "-h"})
+        self.assertEqual(executions[0][0][-2:], ["--", "-hello"])
+        self.assertGreaterEqual(executions[0][1], 90)
+        self.assertEqual(executions[1][0][-2:], ["--", "-h"])
+        self.assertGreaterEqual(executions[1][1], 40)
+        self.assertEqual(executions[2][0][-2:], ["--", "-h"])
+
+    def test_invalid_numeric_and_schema_arguments_are_rejected(self):
+        cases = (
+            ("press", {"keys": ["Down"], "delay": True}),
+            ("press", {"keys": ["Down"], "delay": -1}),
+            ("enter_text", {"text": "x", "delay": "1"}),
+            ("collect_logs", {"seconds": float("inf")}),
+            ("run_flow", {"scenario": "/x", "evidence_dir": "/y", "dry_run": "true"}),
+        )
+        for name, arguments in cases:
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                server.call_tool(name, arguments)
+
+    def test_cancellation_marks_queued_and_terminates_running_requests(self):
+        process = object()
+        server.IN_FLIGHT[7] = process
+        with mock.patch.object(server, "terminate_process") as terminate:
+            server.cancel_request(7)
+            terminate.assert_called_once_with(process)
+        server.PENDING_REQUESTS.add(8)
+        server.cancel_request(8)
+        self.assertIn(8, server.CANCELLED_REQUESTS)
+        token = server.CURRENT_REQUEST_ID.set(8)
+        try:
+            with self.assertRaises(server.RequestCancelled):
+                server.execute(["must-not-run"])
+        finally:
+            server.CURRENT_REQUEST_ID.reset(token)
+
+    def test_same_device_aliases_serialize_mutations(self):
+        active = 0
+        maximum = 0
+        guard = threading.Lock()
+
+        def call(_name, _arguments):
+            nonlocal active, maximum
+            with guard:
+                active += 1
+                maximum = max(maximum, active)
+            time.sleep(0.03)
+            with guard:
+                active -= 1
+            return {"command_succeeded": True, "stdout": "", "stderr": ""}
+
+        address = [(server.socket.AF_INET, server.socket.SOCK_STREAM, 6, "", ("192.168.1.2", 0))]
+        with mock.patch.object(server, "resolve_target", side_effect=lambda value=None: value or "roku.local"), \
+             mock.patch.object(server.socket, "getaddrinfo", return_value=address), \
+             mock.patch.object(server, "call_tool", side_effect=call):
+            workers = [threading.Thread(target=server.tool_result, args=("press", {"host": host, "keys": ["Down"]}))
+                       for host in ("roku.local", "192.168.1.2")]
+            for worker in workers: worker.start()
+            for worker in workers: worker.join()
+        self.assertEqual(maximum, 1)
+
+    def test_flow_timeout_accounts_for_pause_keys_and_screenshot(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            scenario = Path(temporary) / "flow.json"
+            scenario.write_text(json.dumps({"steps": [
+                {"action": "pause", "seconds": 3600},
+                {"action": "press", "keys": ["Down"] * 40, "delay": 10},
+                {"action": "screenshot", "save": "screen.jpg"},
+            ]}))
+            self.assertGreaterEqual(server.flow_timeout(scenario, False), 4970)
+
+    @unittest.skipIf(os.name == "nt", "symlink behavior is platform/privilege dependent on Windows")
+    def test_explicit_artifact_symlinks_are_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            target = root / "target"
+            target.write_text("safe")
+            link = root / "capture.log"
+            link.symlink_to(target)
+            with self.assertRaises(ValueError):
+                server.path_arg(str(link), "output")
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -13,6 +13,9 @@ const pythonCandidates = [
   { command: "python", args: [] },
   { command: "py", args: ["-3"] },
 ];
+const nodeOnly = process.argv.includes("--node-only");
+const pythonOnly = process.argv.includes("--python-only");
+if (nodeOnly && pythonOnly) throw new Error("Choose at most one focused test mode.");
 const python = pythonCandidates.find(({ command, args }) => {
   const result = spawnSync(command, [...args, "-c", "import sys; raise SystemExit(sys.version_info < (3, 9))"], {
     encoding: "utf8",
@@ -20,8 +23,10 @@ const python = pythonCandidates.find(({ command, args }) => {
   });
   return !result.error && result.status === 0;
 });
-if (!python) throw new Error("Python 3.9 or newer is required for validation.");
+if (!nodeOnly && !python) throw new Error("Python 3.9 or newer is required for validation.");
 
-run("node", ["--test", "tests/node/repository.test.mjs"], "Node tests");
-run(python.command, [...python.args, "-m", "unittest", "discover", "-s", "tests/python", "-p", "test_*.py"], "Python tests");
+if (!pythonOnly) run("node", ["--test", "tests/node/repository.test.mjs"], "Node tests");
+if (!nodeOnly) {
+  run(python.command, [...python.args, "-m", "unittest", "discover", "-s", "tests/python", "-p", "test_*.py"], "Python tests");
+}
 console.log("Roku Codex Toolkit validation passed.");

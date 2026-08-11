@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "setup": "node scripts/setup-roku-toolkit.mjs",
-    "test:node": "node --test tests/node/*.test.mjs",
-    "test:python": "python3 -m unittest discover -s tests/python -p 'test_*.py'",
+    "test:node": "node scripts/validate-roku-toolkit.mjs --node-only",
+    "test:python": "node scripts/validate-roku-toolkit.mjs --python-only",
     "validate": "node scripts/validate-roku-toolkit.mjs"
   },
   "engines": {
