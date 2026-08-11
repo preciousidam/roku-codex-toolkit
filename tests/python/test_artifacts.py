@@ -26,6 +26,22 @@ class AtomicArtifactTests(unittest.TestCase):
             if os.name == "posix":
                 self.assertEqual(stat.S_IMODE(destination.stat().st_mode), 0o600)
 
+    @unittest.skipIf(os.name == "nt", "POSIX directory permission behavior")
+    @unittest.skipUnless(
+        hasattr(os, "O_PATH") or hasattr(os, "O_SEARCH"),
+        "Platform has no search-only directory-open mode",
+    )
+    def test_write_search_only_directory_does_not_require_read_permission(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary) / "drop"
+            parent.mkdir(mode=0o300)
+            destination = parent / "capture.log"
+            try:
+                artifacts.write_private_text(destination, "safe")
+                self.assertEqual(destination.read_text(encoding="utf-8"), "safe")
+            finally:
+                parent.chmod(0o700)
+
     @unittest.skipIf(os.name == "nt", "symlink creation requires optional Windows privileges")
     def test_existing_destination_symlink_is_rejected(self):
         with tempfile.TemporaryDirectory() as temporary:

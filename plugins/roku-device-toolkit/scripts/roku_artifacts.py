@@ -17,7 +17,15 @@ def _identity(status: os.stat_result) -> tuple[int, int]:
 
 def _open_parent_anchor(parent: Path) -> int:
     if os.name != "nt":
-        return os.open(parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+        access_mode = getattr(os, "O_PATH", None)
+        if access_mode is None:
+            access_mode = getattr(os, "O_SEARCH", os.O_RDONLY)
+        flags = (
+            access_mode
+            | getattr(os, "O_DIRECTORY", 0)
+            | getattr(os, "O_CLOEXEC", 0)
+        )
+        return os.open(parent, flags)
 
     import ctypes
     from ctypes import wintypes
