@@ -42,6 +42,40 @@ class ConfigurationTests(unittest.TestCase):
                 self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
                 self.assertEqual(stat.S_IMODE(path.parent.stat().st_mode), 0o700)
 
+    def test_custom_existing_parent_permissions_are_preserved(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary) / "shared"
+            parent.mkdir(mode=0o755)
+            path = parent / "config.json"
+            before = stat.S_IMODE(parent.stat().st_mode)
+            with mock.patch.dict(os.environ, {config.CONFIG_ENV: str(path)}):
+                config.save_target("192.168.1.20")
+            if os.name == "posix":
+                self.assertEqual(stat.S_IMODE(parent.stat().st_mode), before)
+
+    def test_existing_default_directory_is_hardened(self):
+        if os.name != "posix":
+            self.skipTest("POSIX mode assertion")
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary) / "default"
+            parent.mkdir(mode=0o755)
+            with mock.patch.object(config, "DEFAULT_CONFIG", parent / "config.json"), \
+                 mock.patch.dict(os.environ, {}, clear=True):
+                config.save_target("192.168.1.20")
+            self.assertEqual(stat.S_IMODE(parent.stat().st_mode), 0o700)
+
+    @unittest.skipIf(os.name == "nt", "symlink behavior is platform/privilege dependent on Windows")
+    def test_symlinked_config_parent_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            target = root / "target"
+            target.mkdir()
+            link = root / "link"
+            link.symlink_to(target, target_is_directory=True)
+            with mock.patch.dict(os.environ, {config.CONFIG_ENV: str(link / "config.json")}), \
+                 self.assertRaises(RuntimeError):
+                config.save_target("192.168.1.20")
+
 
 class RepositoryTests(unittest.TestCase):
     def test_all_python_sources_parse(self):
