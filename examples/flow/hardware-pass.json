@@ -1,0 +1,8 @@
+{
+  "name": "Hardware gate: launch and verify the development channel",
+  "steps": [
+    { "action": "launch", "channel_id": "dev" },
+    { "action": "pause", "seconds": 2 },
+    { "action": "query", "kind": "active-app", "contains": "dev", "save": "active-app.xml" }
+  ]
+}

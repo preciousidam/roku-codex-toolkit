@@ -18,8 +18,8 @@ The two-plugin split is also coherent: device access has materially different pe
 | P1 | Evidence semantics could regress into treating capture success as UI verification. | Keep screenshot steps `pending_visual_review`; test this invariant and document it as a release gate. |
 | P2 | Cross-platform support was described without a CI matrix or an explicit distinction between host tests and hardware tests. | Add macOS/Linux/Windows CI and state the evidence boundary. |
 | P2 | Public contribution, release, compatibility, and tooling-scope documentation was absent. | Add contributor, release-boundary, and comparison documents plus a safe example. |
-| P2 | Explicit artifact validation is check-then-use and therefore cannot fully prevent a same-user symlink race in a hostile shared directory. | Before v0.1.0, move all explicit output replacement behind a common no-follow/atomic artifact helper or document the trusted-directory requirement. |
-| P2 | MCP request IDs share process-global cancellation maps; duplicate concurrent IDs are not rejected explicitly. | Add duplicate-ID rejection and lifecycle tests before v0.1.0. |
+| P2 | Explicit artifact validation was check-then-use and could not prevent a same-user symlink race in a hostile shared directory. | Completed: all explicit destinations now use a common private atomic replacement helper that pins the resolved parent and validates the destination and staging-file identities at commit. |
+| P2 | MCP request IDs shared process-global cancellation maps without rejecting duplicate concurrent IDs. | Completed: IDs are atomically reserved until response cleanup; duplicate, cancellation, reuse, and concurrency behavior is covered by tests. |
 
 ## Security model
 
@@ -38,8 +38,6 @@ The repository is a Codex marketplace source, not an npm or PyPI package. Keepin
 
 ## Follow-up backlog
 
-- P2: centralize atomic artifact replacement and defend against symlink swaps at final commit time.
-- P2: reject duplicate in-flight JSON-RPC request IDs and add cancellation race tests.
 - P2: add mocked HTTP/digest and socket integration tests, including Windows process-tree cancellation.
 - P3: add JSON Schema files for flow scenarios and reports.
 - P3: add structured server logging with automatic redaction.
@@ -48,4 +46,4 @@ The repository is a Codex marketplace source, not an npm or PyPI package. Keepin
 
 ## License recommendation
 
-Apache License 2.0 is recommended because this is developer tooling intended for broad commercial and open-source use, and its explicit patent grant is useful for ecosystem adoption. MIT is a reasonable simpler alternative if minimal text is the overriding preference. No license should be added until the owner approves the choice.
+Apache License 2.0 is recommended because this is developer tooling intended for broad commercial and open-source use, and its explicit patent grant is useful for ecosystem adoption. MIT is a reasonable simpler alternative if minimal text is the overriding preference. See [the license evaluation](license-evaluation.md). No license should be added until the owner approves the choice.

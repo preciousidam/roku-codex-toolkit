@@ -41,7 +41,7 @@ The test suite runs on macOS, Linux, and Windows in CI. That establishes host-si
 
 ## Project status
 
-This repository is stabilizing toward v0.1.0. See [the release boundary](docs/v0.1.0.md), [stabilization audit](docs/stabilization-audit.md), and [contributor guide](CONTRIBUTING.md).
+This repository is stabilizing toward v0.1.0. See [the release boundary](docs/v0.1.0.md), [stabilization audit](docs/stabilization-audit.md), [hardware validation matrix](docs/hardware-validation.md), and [contributor guide](CONTRIBUTING.md).
 
 ## Roku tooling landscape
 
@@ -53,4 +53,4 @@ Do not commit Roku developer passwords, captured console logs, screenshots, or f
 
 ## License status
 
-An open-source license has not yet been selected. Until a license is added, copyright remains with the author and reuse rights are not granted beyond viewing the public source.
+An open-source license has not yet been selected. The current recommendation is documented in [the Apache-2.0 versus MIT evaluation](docs/license-evaluation.md). Until a license is added, copyright remains with the author and reuse rights are not granted beyond viewing the public source.
