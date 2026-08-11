@@ -65,6 +65,7 @@ test("flow schemas and examples expose stable public contracts", () => {
   for (const save of [
     "../escape.jpg", "/tmp/output.jpg", "C:\\output.jpg", "report.json",
     "./report.json", ".\\report.json", "././REPORT.JSON", "./.", ".\\.",
+    "query\u0000.xml", "screen\u0000.jpg",
   ]) {
     const invalid = {
       steps: [{ action: "query", kind: "active-app", contains: "dev", save }],
@@ -75,7 +76,7 @@ test("flow schemas and examples expose stable public contracts", () => {
     const valid = { steps: [{ action: "screenshot", save }] };
     assertSchemaValid(validateScenario, valid, save);
   }
-  for (const save of ["screen.gif", "screen.bmp", "screen.png.tmp"]) {
+  for (const save of ["screen.gif", "screen.bmp", "screen.png.tmp", "screen\u0000.jpg"]) {
     const invalid = { steps: [{ action: "screenshot", save }] };
     assert.equal(validateScenario(invalid), false, save);
   }
