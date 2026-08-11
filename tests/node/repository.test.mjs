@@ -68,4 +68,12 @@ test("flow schemas and examples expose stable public contracts", () => {
     };
     assert.equal(validateScenario(invalid), false, save);
   }
+  for (const save of ["screen.jpg", "screen.JPEG", "screen.png", "screen.PNG"]) {
+    const valid = { steps: [{ action: "screenshot", save }] };
+    assertSchemaValid(validateScenario, valid, save);
+  }
+  for (const save of ["screen.gif", "screen.bmp", "screen.png.tmp"]) {
+    const invalid = { steps: [{ action: "screenshot", save }] };
+    assert.equal(validateScenario(invalid), false, save);
+  }
 });

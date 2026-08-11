@@ -107,7 +107,7 @@
         "save": {
           "type": "string",
           "allOf": [{ "$ref": "#/$defs/artifactPath" }],
-          "pattern": "\\.[jJ][pP](?:[eE])?[gG]$"
+          "pattern": "\\.(?:[jJ][pP](?:[eE])?[gG]|[pP][nN][gG])$"
         }
       }
     },
