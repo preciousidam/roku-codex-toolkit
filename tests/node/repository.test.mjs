@@ -76,4 +76,15 @@ test("flow schemas and examples expose stable public contracts", () => {
     const invalid = { steps: [{ action: "screenshot", save }] };
     assert.equal(validateScenario(invalid), false, save);
   }
+  for (const host of ["roku.local", "192.168.1.50", " roku.local "]) {
+    const valid = { host, steps: [{ action: "screenshot", save: "screen.png" }] };
+    assertSchemaValid(validateScenario, valid, host);
+  }
+  for (const host of [
+    "", "http://roku.local", "roku.local:8060", "roku.local/path",
+    "roku.local?query", "roku.local#fragment", "user@roku.local",
+  ]) {
+    const invalid = { host, steps: [{ action: "screenshot", save: "screen.png" }] };
+    assert.equal(validateScenario(invalid), false, host);
+  }
 });

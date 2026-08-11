@@ -7,7 +7,7 @@
   "required": ["steps"],
   "properties": {
     "name": { "$ref": "#/$defs/nonBlankString" },
-    "host": { "$ref": "#/$defs/nonBlankString" },
+    "host": { "$ref": "#/$defs/bareHost" },
     "continue_on_failure": { "type": "boolean", "default": false },
     "steps": {
       "type": "array",
@@ -36,6 +36,11 @@
     "nonBlankString": {
       "type": "string",
       "pattern": "\\S"
+    },
+    "bareHost": {
+      "type": "string",
+      "pattern": "^(?=.*\\S)[^:/?#@]+$",
+      "description": "A bare IP address or hostname without a scheme, port, path, query, fragment, or user information."
     },
     "artifactPath": {
       "type": "string",
