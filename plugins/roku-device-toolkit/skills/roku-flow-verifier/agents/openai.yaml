@@ -1,0 +1,4 @@
+interface:
+  display_name: "Roku Flow Verifier"
+  short_description: "Run repeatable Roku UI and playback flows"
+  default_prompt: "Use $roku-flow-verifier to execute and document this Roku app flow with runtime evidence."

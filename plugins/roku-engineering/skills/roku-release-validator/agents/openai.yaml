@@ -1,0 +1,4 @@
+interface:
+  display_name: "Roku Release Validator"
+  short_description: "Validate Roku releases from branch to production"
+  default_prompt: "Use $roku-release-validator to prepare and verify this Roku release safely."

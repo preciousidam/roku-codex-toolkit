@@ -1,0 +1,32 @@
+{
+  "name": "roku-codex-toolkit",
+  "interface": {
+    "displayName": "Roku Codex Toolkit"
+  },
+  "plugins": [
+    {
+      "name": "roku-device-toolkit",
+      "source": {
+        "source": "local",
+        "path": "./plugins/roku-device-toolkit"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "roku-engineering",
+      "source": {
+        "source": "local",
+        "path": "./plugins/roku-engineering"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

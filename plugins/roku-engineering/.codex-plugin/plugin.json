@@ -1,0 +1,33 @@
+{
+  "name": "roku-engineering",
+  "version": "0.1.0",
+  "description": "Diagnose, review, and prepare releases for Roku BrightScript and SceneGraph projects.",
+  "author": {
+    "name": "Ebube Idam"
+  },
+  "homepage": "https://github.com/preciousidam/roku-codex-toolkit",
+  "repository": "https://github.com/preciousidam/roku-codex-toolkit",
+  "keywords": [
+    "roku",
+    "brightscript",
+    "scenegraph",
+    "accessibility",
+    "release"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Roku Engineering",
+    "shortDescription": "Diagnose and release Roku applications",
+    "longDescription": "Project-neutral Roku runtime-log analysis, accessibility review, and release validation for BrightScript and SceneGraph repositories.",
+    "developerName": "Ebube Idam",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive"
+    ],
+    "defaultPrompt": [
+      "Diagnose this Roku runtime failure.",
+      "Review this Roku UI for remote-control accessibility.",
+      "Validate this Roku release."
+    ]
+  }
+}

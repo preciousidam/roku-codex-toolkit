@@ -1,0 +1,4 @@
+interface:
+  display_name: "Roku Accessibility Reviewer"
+  short_description: "Review Roku focus, readability, and navigation"
+  default_prompt: "Use $roku-accessibility-reviewer to audit this Roku flow for accessibility and remote usability."

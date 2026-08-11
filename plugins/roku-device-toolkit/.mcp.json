@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "roku-device": {
+      "cwd": ".",
+      "command": "node",
+      "args": [
+        "./scripts/launch-mcp.mjs"
+      ],
+      "env_vars": [
+        "ROKU_TOOLKIT_CONFIG",
+        "ROKU_DEV_TARGET",
+        "ROKU_DEV_PASSWORD"
+      ]
+    }
+  }
+}

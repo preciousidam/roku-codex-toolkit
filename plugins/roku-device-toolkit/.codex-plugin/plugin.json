@@ -1,0 +1,34 @@
+{
+  "name": "roku-device-toolkit",
+  "version": "0.1.0",
+  "description": "Operate Roku development devices and verify app flows from Codex.",
+  "author": {
+    "name": "Ebube Idam"
+  },
+  "homepage": "https://github.com/preciousidam/roku-codex-toolkit",
+  "repository": "https://github.com/preciousidam/roku-codex-toolkit",
+  "keywords": [
+    "roku",
+    "ecp",
+    "brightscript",
+    "scenegraph",
+    "device-testing"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Roku Device Toolkit",
+    "shortDescription": "Operate and verify any Roku development app",
+    "longDescription": "Reusable Roku device controls, sideloading, screenshots, console capture, and evidence-backed flow verification for BrightScript and SceneGraph projects.",
+    "developerName": "Ebube Idam",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Connect to my Roku development device.",
+      "Verify this Roku app flow and collect evidence."
+    ]
+  }
+}

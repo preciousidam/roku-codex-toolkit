@@ -1,0 +1,4 @@
+interface:
+  display_name: "Roku Runtime Log Analyzer"
+  short_description: "Find causal failures in Roku runtime logs"
+  default_prompt: "Use $roku-runtime-log-analyzer to analyze these Roku logs and identify the first causal failure."

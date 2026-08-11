@@ -1,0 +1,4 @@
+interface:
+  display_name: "Roku Device Operator"
+  short_description: "Control, inspect, and capture Roku test devices"
+  default_prompt: "Use $roku-device-operator to inspect and operate my Roku development device safely."

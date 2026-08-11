@@ -1,0 +1,14 @@
+{
+  "name": "roku-codex-toolkit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "setup": "node scripts/setup-roku-toolkit.mjs",
+    "validate": "node scripts/validate-roku-toolkit.mjs"
+  },
+  "engines": {
+    "node": ">=18",
+    "python": ">=3.9"
+  }
+}
