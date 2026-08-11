@@ -1,6 +1,8 @@
 import importlib.util
 import json
 import os
+import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -63,6 +65,69 @@ class ServerBehaviorTests(unittest.TestCase):
                 server.execute(["must-not-run"])
         finally:
             server.CURRENT_REQUEST_ID.reset(token)
+
+    def test_windows_termination_uses_bounded_process_tree_kill(self):
+        process = mock.Mock(pid=1234)
+        process.poll.side_effect = [None, 0]
+        with mock.patch.object(server.os, "name", "nt"), mock.patch.object(
+            server.subprocess, "run"
+        ) as run:
+            server.terminate_process(process)
+        run.assert_called_once_with(
+            ["taskkill", "/PID", "1234", "/T", "/F"],
+            check=False,
+            stdout=server.subprocess.DEVNULL,
+            stderr=server.subprocess.DEVNULL,
+            timeout=server.WINDOWS_TERMINATION_TIMEOUT,
+        )
+        process.terminate.assert_not_called()
+
+    @unittest.skipUnless(os.name == "nt", "Windows process-tree behavior")
+    def test_windows_termination_stops_descendant_process(self):
+        child_code = "import time; time.sleep(60)"
+        parent_code = (
+            "import subprocess,sys,time; "
+            f"child=subprocess.Popen([sys.executable, '-c', {child_code!r}]); "
+            "print(child.pid, flush=True); time.sleep(60)"
+        )
+        parent = subprocess.Popen(
+            [sys.executable, "-c", parent_code],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        self.addCleanup(
+            subprocess.run,
+            ["taskkill", "/PID", str(parent.pid), "/T", "/F"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        self.assertIsNotNone(parent.stdout)
+        child_pid = int(parent.stdout.readline().strip())
+        self.addCleanup(
+            subprocess.run,
+            ["taskkill", "/PID", str(child_pid), "/T", "/F"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+
+        server.terminate_process(parent)
+        parent.wait(timeout=server.WINDOWS_TERMINATION_TIMEOUT)
+        deadline = time.monotonic() + 5
+        while True:
+            listing = subprocess.run(
+                ["tasklist", "/FI", f"PID eq {child_pid}", "/FO", "CSV", "/NH"],
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=10,
+            )
+            if f'"{child_pid}"' not in listing.stdout or time.monotonic() >= deadline:
+                break
+            time.sleep(0.1)
+        self.assertNotIn(f'"{child_pid}"', listing.stdout)
 
     def test_concurrent_duplicate_request_id_has_one_owner(self):
         barrier = threading.Barrier(8)

@@ -33,6 +33,7 @@ ECP_REQUEST_TIMEOUT = 10.0
 DEVELOPER_MODE_REQUEST_TIMEOUT = 120.0
 SCREENSHOT_TIMEOUT = DEVELOPER_MODE_REQUEST_TIMEOUT * 2 + 20.0
 SIDELOAD_TIMEOUT = DEVELOPER_MODE_REQUEST_TIMEOUT + 20.0
+WINDOWS_TERMINATION_TIMEOUT = 10.0
 CURRENT_REQUEST_ID: ContextVar[Any] = ContextVar("current_request_id", default=None)
 RESOLVED_DEVICE_TARGET: ContextVar[Optional[str]] = ContextVar("resolved_device_target", default=None)
 IN_FLIGHT: dict[Any, subprocess.Popen[str]] = {}
@@ -358,9 +359,23 @@ def terminate_process(process: subprocess.Popen[str]) -> None:
         if os.name == "posix":
             os.killpg(process.pid, signal.SIGTERM)
         else:
-            process.terminate()
+            subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=WINDOWS_TERMINATION_TIMEOUT,
+            )
+            if process.poll() is None:
+                process.terminate()
     except ProcessLookupError:
         pass
+    except (OSError, subprocess.TimeoutExpired):
+        try:
+            if process.poll() is None:
+                process.terminate()
+        except ProcessLookupError:
+            pass
 
 
 def reserve_request_id(request_id: Any) -> bool:

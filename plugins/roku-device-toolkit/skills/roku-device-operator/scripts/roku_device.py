@@ -30,6 +30,8 @@ DEFAULT_TIMEOUT = 10.0
 MAX_ECP_TIMEOUT = 60.0
 DEVELOPER_MODE_TIMEOUT = 120.0
 MAX_LOG_SECONDS = 120.0
+ECP_PORT = 8060
+CONSOLE_PORT = 8085
 KEY_ALIASES = {"ok": "Select"}
 ECP_QUERY_ROOTS = {
     "/query/device-info": "device-info",
@@ -48,14 +50,14 @@ def target_host(value: Optional[str]) -> str:
 
 
 def request(host: str, method: str, path: str, timeout: float) -> bytes:
-    req = urllib.request.Request(f"http://{host}:8060{path}", method=method)
+    req = urllib.request.Request(f"http://{host}:{ECP_PORT}{path}", method=method)
     try:
         with ECP_OPENER.open(req, timeout=timeout) as response:
             return response.read()
     except urllib.error.HTTPError as error:
         raise SystemExit(f"Roku ECP returned HTTP {error.code} for {path}.") from error
     except urllib.error.URLError as error:
-        raise SystemExit(f"Unable to reach Roku ECP at {host}:8060: {error.reason}") from error
+        raise SystemExit(f"Unable to reach Roku ECP at {host}:{ECP_PORT}: {error.reason}") from error
 
 
 def pretty_xml(payload: bytes, expected_root: str) -> str:
@@ -198,7 +200,7 @@ def collect_logs(host: str, seconds: float, output: Optional[Path]) -> None:
     capture_error: Optional[OSError] = None
     bytes_written = 0
     try:
-        with socket.create_connection((host, 8085), timeout=DEFAULT_TIMEOUT) as connection:
+        with socket.create_connection((host, CONSOLE_PORT), timeout=DEFAULT_TIMEOUT) as connection:
             connection.setblocking(False)
             deadline = time.monotonic() + seconds
             while time.monotonic() < deadline:
@@ -232,7 +234,9 @@ def collect_logs(host: str, seconds: float, output: Optional[Path]) -> None:
             else:
                 artifact.cleanup()
         detail = " Partial logs were preserved." if bytes_written else ""
-        raise SystemExit(f"Unable to read BrightScript console at {host}:8085: {capture_error}.{detail}") from capture_error
+        raise SystemExit(
+            f"Unable to read BrightScript console at {host}:{CONSOLE_PORT}: {capture_error}.{detail}"
+        ) from capture_error
     if artifact is not None:
         if disconnected_early and bytes_written == 0:
             artifact.cleanup()
