@@ -9,9 +9,14 @@ import json
 import os
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 from typing import Any, Optional
+
+SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+from roku_artifacts import write_private_text  # noqa: E402
 
 
 CONFIG_ENV = "ROKU_TOOLKIT_CONFIG"
@@ -19,7 +24,6 @@ DEFAULT_CONFIG = Path("~/.config/roku-device-toolkit/config.json").expanduser()
 KEYCHAIN_SERVICE = "roku-device-toolkit"
 KEYCHAIN_ACCOUNT = "rokudev"
 KEYCHAIN_TIMEOUT_SECONDS = 15
-
 
 def ensure_private_directory(path: Path, harden_existing: bool = False) -> None:
     """Create missing directories privately without changing an existing parent."""
@@ -89,16 +93,11 @@ def save_target(target: str) -> Path:
     )
     data = load_config()
     data["target"] = value
-    descriptor, temporary_name = tempfile.mkstemp(prefix="config-", suffix=".json", dir=path.parent)
-    temporary = Path(temporary_name)
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            json.dump(data, handle, indent=2)
-            handle.write("\n")
-        os.chmod(temporary, 0o600)
-        os.replace(temporary, path)
-    finally:
-        temporary.unlink(missing_ok=True)
+    write_private_text(
+        path,
+        json.dumps(data, indent=2) + "\n",
+        "Roku configuration",
+    )
     return path
 
 

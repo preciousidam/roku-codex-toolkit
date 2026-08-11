@@ -64,6 +64,42 @@ class ServerBehaviorTests(unittest.TestCase):
         finally:
             server.CURRENT_REQUEST_ID.reset(token)
 
+    def test_concurrent_duplicate_request_id_has_one_owner(self):
+        barrier = threading.Barrier(8)
+        results = []
+        result_lock = threading.Lock()
+
+        def reserve():
+            barrier.wait()
+            acquired = server.reserve_request_id("same-id")
+            with result_lock:
+                results.append(acquired)
+
+        workers = [threading.Thread(target=reserve) for _ in range(8)]
+        for worker in workers:
+            worker.start()
+        for worker in workers:
+            worker.join()
+
+        self.assertEqual(results.count(True), 1)
+        self.assertEqual(results.count(False), 7)
+        self.assertIn("same-id", server.PENDING_REQUESTS)
+
+    def test_cancelled_request_id_cannot_be_reused_until_cleanup(self):
+        self.assertTrue(server.reserve_request_id(42))
+        server.cancel_request(42)
+        self.assertIn(42, server.CANCELLED_REQUESTS)
+        self.assertFalse(server.reserve_request_id(42))
+
+        server.release_request_id(42)
+
+        self.assertNotIn(42, server.CANCELLED_REQUESTS)
+        self.assertTrue(server.reserve_request_id(42))
+
+    def test_in_flight_request_id_is_rejected_even_without_pending_marker(self):
+        server.IN_FLIGHT[7] = object()
+        self.assertFalse(server.reserve_request_id(7))
+
     def test_same_device_aliases_serialize_mutations(self):
         active = 0
         maximum = 0

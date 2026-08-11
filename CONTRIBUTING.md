@@ -8,7 +8,7 @@ Install Node.js 18+ and Python 3.9+, clone the repository, and run:
 npm run validate
 ```
 
-The tests are dependency-free and do not require a Roku. Run `npm run test:node` or `npm run test:python` for focused feedback. On Windows, `npm run validate` discovers `py -3` even though the focused npm alias assumes `python3`; the cross-platform validation command is authoritative.
+The tests are dependency-free and do not require a Roku. Run `npm run test:node` or `npm run test:python` for focused feedback. Both focused commands use the same portable interpreter discovery as `npm run validate`: `python3`, `python`, or Windows `py -3`.
 
 ## Change expectations
 

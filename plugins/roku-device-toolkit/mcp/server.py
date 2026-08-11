@@ -363,6 +363,25 @@ def terminate_process(process: subprocess.Popen[str]) -> None:
         pass
 
 
+def reserve_request_id(request_id: Any) -> bool:
+    """Atomically reserve an ID until its response lifecycle is complete."""
+    if not valid_request_id(request_id):
+        return False
+    with IN_FLIGHT_LOCK:
+        if request_id in PENDING_REQUESTS or request_id in IN_FLIGHT:
+            return False
+        PENDING_REQUESTS.add(request_id)
+        return True
+
+
+def release_request_id(request_id: Any) -> None:
+    if not valid_request_id(request_id):
+        return
+    with IN_FLIGHT_LOCK:
+        PENDING_REQUESTS.discard(request_id)
+        CANCELLED_REQUESTS.discard(request_id)
+
+
 def cancel_request(request_id: Any) -> None:
     if not valid_request_id(request_id):
         return
@@ -643,12 +662,7 @@ def main() -> None:
             emit({"jsonrpc": "2.0", "id": request_id, "error": {"code": -32603, "message": str(error)}})
             traceback.print_exc(file=sys.stderr)
         finally:
-            try:
-                with IN_FLIGHT_LOCK:
-                    PENDING_REQUESTS.discard(request_id)
-                    CANCELLED_REQUESTS.discard(request_id)
-            except TypeError:
-                pass
+            release_request_id(request_id)
             CURRENT_REQUEST_ID.reset(token)
 
     executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="roku-device-mcp")
@@ -672,12 +686,13 @@ def main() -> None:
                     if isinstance(params, dict) and valid_request_id(params.get("requestId")):
                         cancel_request(params.get("requestId"))
                     continue
-                if isinstance(message, dict) and message.get("id") is not None:
-                    try:
-                        with IN_FLIGHT_LOCK:
-                            PENDING_REQUESTS.add(message["id"])
-                    except TypeError:
-                        pass
+                if message.get("id") is not None and not reserve_request_id(message["id"]):
+                    emit({
+                        "jsonrpc": "2.0",
+                        "id": message["id"],
+                        "error": {"code": -32600, "message": "Duplicate request id"},
+                    })
+                    continue
                 executor.submit(process, message)
             except json.JSONDecodeError as error:
                 emit({"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}})
