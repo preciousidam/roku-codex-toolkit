@@ -38,8 +38,8 @@ The repository is a Codex marketplace source, not an npm or PyPI package. Keepin
 
 ## Follow-up backlog
 
-- P2: add mocked HTTP/digest and socket integration tests, including Windows process-tree cancellation.
-- P3: add JSON Schema files for flow scenarios and reports.
+- Completed: loopback HTTP/digest and socket integration tests cover device boundaries; Windows CI covers process-tree cancellation.
+- Completed: Draft 2020-12 JSON Schemas document flow scenarios and generated reports and are checked by repository validation.
 - P3: add structured server logging with automatic redaction.
 - P3: evaluate signed release artifacts and checksums once distribution begins.
 - P3: build a static documentation portal and marketplace media only after v0.1.0 behavior freezes.

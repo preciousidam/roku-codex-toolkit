@@ -110,6 +110,19 @@ class FlowTests(unittest.TestCase):
                 with self.subTest(relative=relative), self.assertRaises(ValueError):
                     flow.safe_artifact(root, relative)
 
+    def test_flow_schema_enums_match_runtime_contract(self):
+        references = ROOT / "plugins/roku-device-toolkit/skills/roku-flow-verifier/references"
+        scenario = json.loads((references / "flow-scenario.schema.json").read_text())
+        report = json.loads((references / "flow-report.schema.json").read_text())
+        self.assertEqual(set(scenario["$defs"]["query"]["properties"]["kind"]["enum"]), flow.QUERY_KINDS)
+        schema_actions = {
+            item["$ref"].rsplit("/", 1)[-1]
+            for item in scenario["$defs"]["step"]["oneOf"]
+        }
+        self.assertEqual(schema_actions, set(flow.STEP_FIELDS))
+        statuses = report["$defs"]["stepResult"]["properties"]["status"]["enum"]
+        self.assertIn("pending_visual_review", statuses)
+
     def test_screenshot_is_not_automatic_verification(self):
         self.assertFalse(flow.is_verification_checkpoint({"action": "screenshot", "save": "screen.jpg"}))
         self.assertTrue(flow.is_verification_checkpoint({"action": "query", "kind": "player", "contains": "play"}))

@@ -169,6 +169,10 @@ def main() -> None:
         raise SystemExit(
             f"Unknown scenario field(s): {', '.join(unknown_scenario_fields)}"
         )
+    if "name" in scenario and (
+        not isinstance(scenario["name"], str) or not scenario["name"].strip()
+    ):
+        raise SystemExit("Scenario name must be a non-empty string when provided.")
     if not scenario["steps"]:
         raise SystemExit("Scenario must contain at least one verification step.")
     if "continue_on_failure" in scenario and not isinstance(scenario["continue_on_failure"], bool):

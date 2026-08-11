@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "flow-report.schema.json",
+  "title": "Roku Codex Toolkit flow report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name", "host", "dry_run", "verified", "checkpoint_count",
+    "screenshot_count", "passed", "steps"
+  ],
+  "properties": {
+    "name": { "type": "string" },
+    "host": { "type": "string" },
+    "dry_run": { "type": "boolean" },
+    "verified": { "type": "boolean" },
+    "checkpoint_count": { "type": "integer", "minimum": 0 },
+    "screenshot_count": { "type": "integer", "minimum": 0 },
+    "pending_visual_review": { "type": "boolean" },
+    "passed": { "type": "boolean" },
+    "steps": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/stepResult" }
+    },
+    "verification_error": { "type": "string" }
+  },
+  "$defs": {
+    "stepResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "passed", "status", "duration_seconds"],
+      "properties": {
+        "index": { "type": "integer", "minimum": 1 },
+        "started_at": { "type": "number" },
+        "action": { "type": ["string", "null"] },
+        "checkpoint": { "type": "boolean" },
+        "passed": { "type": "boolean" },
+        "status": {
+          "enum": ["passed", "failed", "skipped", "invalid", "pending_visual_review"]
+        },
+        "return_code": { "type": "integer" },
+        "stderr": { "type": "string" },
+        "duration_seconds": { "type": "number", "minimum": 0 },
+        "artifact": { "type": "string" },
+        "capture_succeeded": { "type": "boolean" },
+        "visual_review_required": { "type": "boolean" },
+        "error": { "type": "string" }
+      }
+    }
+  }
+}

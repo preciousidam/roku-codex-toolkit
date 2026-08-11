@@ -51,6 +51,7 @@ class FlowCliTests(unittest.TestCase):
         cases = (
             {"unknown": True, "steps": [{"action": "screenshot", "save": "screen.jpg"}]},
             {"continue_on_failure": "false", "steps": [{"action": "screenshot", "save": "screen.jpg"}]},
+            {"name": 1, "steps": [{"action": "screenshot", "save": "screen.jpg"}]},
             {"steps": [{"action": "launch", "channel_id": "dev", "contentID": "x"}]},
         )
         for index, scenario in enumerate(cases):

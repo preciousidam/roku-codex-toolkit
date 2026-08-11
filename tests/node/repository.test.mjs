@@ -39,3 +39,26 @@ test("device plugin exposes the portable launcher", () => {
   assert.equal(config.mcpServers["roku-device"].cwd, ".");
   assert.equal(config.mcpServers["roku-device"].command, "node");
 });
+
+test("flow schemas and examples expose stable public contracts", () => {
+  const references = path.join(pluginRoots[0], "skills", "roku-flow-verifier", "references");
+  const scenarioSchema = readJson(path.join(references, "flow-scenario.schema.json"));
+  const reportSchema = readJson(path.join(references, "flow-report.schema.json"));
+  assert.equal(scenarioSchema.$schema, "https://json-schema.org/draft/2020-12/schema");
+  assert.equal(reportSchema.$schema, "https://json-schema.org/draft/2020-12/schema");
+  assert.deepEqual(
+    new Set(scenarioSchema.$defs.query.properties.kind.enum),
+    new Set(["info", "apps", "active-app", "player"]),
+  );
+  assert.deepEqual(
+    new Set(reportSchema.$defs.stepResult.properties.status.enum),
+    new Set(["passed", "failed", "skipped", "invalid", "pending_visual_review"]),
+  );
+  for (const name of fs.readdirSync(path.join(root, "examples", "flow"))) {
+    const example = readJson(path.join(root, "examples", "flow", name));
+    assert.ok(Array.isArray(example.steps) && example.steps.length > 0, name);
+    for (const step of example.steps) {
+      assert.ok(scenarioSchema.$defs[step.action], `${name}: ${step.action}`);
+    }
+  }
+});

@@ -2,6 +2,10 @@
 
 Use JSON so the runner remains dependency-free.
 
+Machine-readable contracts are available for both the
+[scenario](flow-scenario.schema.json) and generated [report](flow-report.schema.json).
+Editors can associate the scenario schema with flow files for completion and early validation.
+
 ```json
 {
   "name": "launch-and-open-sidebar",

@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "flow-scenario.schema.json",
+  "title": "Roku Codex Toolkit flow scenario",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["steps"],
+  "properties": {
+    "name": { "$ref": "#/$defs/nonBlankString" },
+    "host": { "$ref": "#/$defs/nonBlankString" },
+    "continue_on_failure": { "type": "boolean", "default": false },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "contains": {
+        "anyOf": [
+          {
+            "type": "object",
+            "required": ["action"],
+            "properties": { "action": { "const": "screenshot" } }
+          },
+          {
+            "type": "object",
+            "required": ["action", "contains"],
+            "properties": { "action": { "const": "query" } }
+          }
+        ]
+      },
+      "items": { "$ref": "#/$defs/step" }
+    }
+  },
+  "$defs": {
+    "nonBlankString": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "artifactPath": {
+      "allOf": [{ "$ref": "#/$defs/nonBlankString" }],
+      "description": "A relative path contained by the evidence directory. report.json is reserved."
+    },
+    "step": {
+      "oneOf": [
+        { "$ref": "#/$defs/query" },
+        { "$ref": "#/$defs/launch" },
+        { "$ref": "#/$defs/press" },
+        { "$ref": "#/$defs/text" },
+        { "$ref": "#/$defs/screenshot" },
+        { "$ref": "#/$defs/pause" }
+      ]
+    },
+    "query": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "kind"],
+      "properties": {
+        "action": { "const": "query" },
+        "kind": { "enum": ["info", "apps", "active-app", "player"] },
+        "contains": { "$ref": "#/$defs/nonBlankString" },
+        "save": { "$ref": "#/$defs/artifactPath" }
+      }
+    },
+    "launch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "channel_id"],
+      "properties": {
+        "action": { "const": "launch" },
+        "channel_id": { "$ref": "#/$defs/nonBlankString" },
+        "content_id": { "type": "string" },
+        "media_type": { "type": "string" }
+      }
+    },
+    "press": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "keys"],
+      "properties": {
+        "action": { "const": "press" },
+        "keys": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/nonBlankString" }
+        },
+        "delay": { "type": "number", "minimum": 0, "maximum": 10, "default": 0.35 }
+      }
+    },
+    "text": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "value"],
+      "properties": {
+        "action": { "const": "text" },
+        "value": { "type": "string" },
+        "delay": { "type": "number", "minimum": 0, "maximum": 10, "default": 0.05 }
+      }
+    },
+    "screenshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "save"],
+      "properties": {
+        "action": { "const": "screenshot" },
+        "save": {
+          "allOf": [{ "$ref": "#/$defs/artifactPath" }],
+          "pattern": "\\.[jJ][pP](?:[eE])?[gG]$"
+        }
+      }
+    },
+    "pause": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action"],
+      "properties": {
+        "action": { "const": "pause" },
+        "seconds": { "type": "number", "minimum": 0, "maximum": 3600, "default": 0 }
+      }
+    }
+  }
+}
