@@ -65,7 +65,7 @@ if (!skipConfig) {
     const result = spawnSync(
       candidate.command,
       [...candidate.args, "-c", "import sys; raise SystemExit(0 if sys.version_info >= (3, 9) else 1)"],
-      { encoding: "utf8" },
+      { encoding: "utf8", timeout: 10_000 },
     );
     return !result.error && result.status === 0;
   });
