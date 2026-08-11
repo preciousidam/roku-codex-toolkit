@@ -51,6 +51,6 @@ The toolkit complements editor-oriented Roku tooling: it gives Codex bounded dev
 
 Do not commit Roku developer passwords, captured console logs, screenshots, or flow evidence. See [SECURITY.md](SECURITY.md) for reporting guidance.
 
-## License status
+## License
 
-An open-source license has not yet been selected. The current recommendation is documented in [the Apache-2.0 versus MIT evaluation](docs/license-evaluation.md). Until a license is added, copyright remains with the author and reuse rights are not granted beyond viewing the public source.
+Licensed under the [Apache License 2.0](LICENSE). The selection rationale is documented in [the Apache-2.0 versus MIT evaluation](docs/license-evaluation.md).

@@ -44,6 +44,6 @@ The repository is a Codex marketplace source, not an npm or PyPI package. Keepin
 - P3: evaluate signed release artifacts and checksums once distribution begins.
 - P3: build a static documentation portal and marketplace media only after v0.1.0 behavior freezes.
 
-## License recommendation
+## License decision
 
-Apache License 2.0 is recommended because this is developer tooling intended for broad commercial and open-source use, and its explicit patent grant is useful for ecosystem adoption. MIT is a reasonable simpler alternative if minimal text is the overriding preference. See [the license evaluation](license-evaluation.md). No license should be added until the owner approves the choice.
+Apache License 2.0 was approved and added because this is developer tooling intended for broad commercial and open-source use, and its explicit patent grant is useful for ecosystem adoption. MIT was the simpler alternative considered. See [the license evaluation](license-evaluation.md).
