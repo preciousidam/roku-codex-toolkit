@@ -4,6 +4,7 @@ import stat
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -24,6 +25,22 @@ class AtomicArtifactTests(unittest.TestCase):
             self.assertEqual(destination.read_text(encoding="utf-8"), "new")
             if os.name == "posix":
                 self.assertEqual(stat.S_IMODE(destination.stat().st_mode), 0o600)
+
+    @unittest.skipIf(os.name == "nt", "POSIX directory permission behavior")
+    @unittest.skipUnless(
+        hasattr(os, "O_PATH") or hasattr(os, "O_SEARCH"),
+        "Platform has no search-only directory-open mode",
+    )
+    def test_write_search_only_directory_does_not_require_read_permission(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary) / "drop"
+            parent.mkdir(mode=0o300)
+            destination = parent / "capture.log"
+            try:
+                artifacts.write_private_text(destination, "safe")
+                self.assertEqual(destination.read_text(encoding="utf-8"), "safe")
+            finally:
+                parent.chmod(0o700)
 
     @unittest.skipIf(os.name == "nt", "symlink creation requires optional Windows privileges")
     def test_existing_destination_symlink_is_rejected(self):
@@ -96,6 +113,69 @@ class AtomicArtifactTests(unittest.TestCase):
                 self.assertFalse((outside / "capture.log").exists())
             finally:
                 artifact.cleanup()
+
+    @unittest.skipIf(os.name == "nt", "POSIX directory-descriptor identity test")
+    def test_substituted_parent_anchor_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            requested = root / "requested"
+            substitute = root / "substitute"
+            requested.mkdir()
+            substitute.mkdir()
+            substitute_anchor = artifacts._open_parent_anchor(substitute)
+
+            with mock.patch.object(
+                artifacts,
+                "_open_parent_anchor",
+                return_value=substitute_anchor,
+            ):
+                with self.assertRaisesRegex(RuntimeError, "directory changed during setup"):
+                    artifacts.AtomicArtifact(requested / "capture.log")
+
+            with self.assertRaises(OSError):
+                os.fstat(substitute_anchor)
+            self.assertEqual(list(substitute.iterdir()), [])
+
+    @unittest.skipIf(os.name == "nt", "POSIX descriptor-relative replacement test")
+    def test_parent_swap_during_replace_stays_in_anchored_directory(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            requested = root / "requested"
+            outside = root / "outside"
+            moved = root / "moved"
+            requested.mkdir()
+            outside.mkdir()
+            artifact = artifacts.AtomicArtifact(requested / "capture.log")
+            with artifact.open_text() as handle:
+                handle.write("safe")
+            real_replace = os.replace
+
+            def swap_then_replace(source, destination, **kwargs):
+                requested.rename(moved)
+                requested.symlink_to(outside, target_is_directory=True)
+                return real_replace(source, destination, **kwargs)
+
+            try:
+                with mock.patch.object(artifacts.os, "replace", side_effect=swap_then_replace):
+                    artifact.commit()
+                self.assertEqual((moved / "capture.log").read_text(), "safe")
+                self.assertFalse((outside / "capture.log").exists())
+            finally:
+                artifact.cleanup()
+
+    @unittest.skipUnless(os.name == "nt", "Windows directory-handle behavior")
+    def test_windows_parent_cannot_be_renamed_during_artifact_lifecycle(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            requested = root / "requested"
+            requested.mkdir()
+            artifact = artifacts.AtomicArtifact(requested / "capture.log")
+            try:
+                with self.assertRaises(OSError):
+                    requested.rename(root / "moved")
+            finally:
+                artifact.cleanup()
+            requested.rename(root / "moved")
 
     @unittest.skipIf(os.name == "nt", "unlinking an open staged file is not supported on Windows")
     def test_staging_file_swap_before_commit_is_rejected(self):
