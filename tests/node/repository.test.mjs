@@ -108,6 +108,33 @@ test("flow schemas and examples expose stable public contracts", () => {
       ...baseReport,
       steps: [{ ...baseReport.steps[0], action: "screenshot", checkpoint: false }],
     },
+    { ...baseReport, passed: false, verified: false },
+    { ...baseReport, passed: false, verified: false, dry_run: true },
+    { ...baseReport, passed: false, verified: false, steps: [] },
+    {
+      ...baseReport,
+      passed: false,
+      verified: false,
+      pending_visual_review: true,
+      steps: [{ ...baseReport.steps[0], passed: false, status: "failed" }],
+    },
+    {
+      ...baseReport,
+      passed: false,
+      verified: false,
+      pending_visual_review: true,
+      steps: [{
+        index: 1, action: "launch", checkpoint: false, passed: false,
+        status: "pending_visual_review", duration_seconds: 0,
+      }],
+    },
+    {
+      ...baseReport,
+      steps: [baseReport.steps[0], {
+        index: 2, action: null, checkpoint: false, passed: true,
+        status: "passed", duration_seconds: 0,
+      }],
+    },
   ]) {
     if (invalid.pending_visual_review === undefined) delete invalid.pending_visual_review;
     assert.equal(validateReport(invalid), false, JSON.stringify(invalid));
@@ -160,7 +187,9 @@ test("flow schemas and examples expose stable public contracts", () => {
     const invalid = { steps: [{ action: "screenshot", save }] };
     assert.equal(validateScenario(invalid), false, save);
   }
-  for (const host of ["roku.local", "192.168.1.50", " roku.local ", "\tdevice.local\n"]) {
+  for (const host of [
+    "roku.local", "roku.local.", "192.168.1.50", " roku.local ", "\tdevice.local\n",
+  ]) {
     const valid = { host, steps: [{ action: "screenshot", save: "screen.png" }] };
     assertSchemaValid(validateScenario, valid, host);
   }
@@ -183,7 +212,8 @@ test("flow schemas and examples expose stable public contracts", () => {
     "", "http://roku.local", "roku.local:8060", "roku.local/path",
     "roku.local?query", "roku.local#fragment", "user@roku.local", "\u001c", "\u00a0",
     "roku\u0000.local", "roku local", "roku\tlocal", "roku\u0001.local",
-    "[roku.local", "roku.local]", "roku_local",
+    "[roku.local", "roku.local]", "roku_local", "-", ".", "roku..local",
+    "-roku.local", "roku-.local", ".roku.local",
   ]) {
     const invalid = { host, steps: [{ action: "screenshot", save: "screen.png" }] };
     assert.equal(validateScenario(invalid), false, host);

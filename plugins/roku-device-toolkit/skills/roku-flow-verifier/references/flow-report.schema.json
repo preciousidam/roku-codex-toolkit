@@ -19,6 +19,7 @@
     "passed": { "type": "boolean" },
     "steps": {
       "type": "array",
+      "minItems": 1,
       "items": { "$ref": "#/$defs/stepResult" }
     },
     "verification_error": { "type": "string" }
@@ -89,6 +90,62 @@
         "required": ["pending_visual_review"],
         "properties": { "pending_visual_review": { "const": true } }
       }
+    },
+    {
+      "if": {
+        "required": ["pending_visual_review"],
+        "properties": { "pending_visual_review": { "const": true } }
+      },
+      "then": {
+        "properties": {
+          "steps": {
+            "type": "array",
+            "contains": {
+              "type": "object",
+              "required": ["status"],
+              "properties": { "status": { "const": "pending_visual_review" } }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["dry_run"],
+        "properties": { "dry_run": { "const": true } }
+      },
+      "then": {
+        "properties": {
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["passed"],
+              "properties": { "passed": { "const": false } }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["dry_run", "steps"],
+        "properties": {
+          "dry_run": { "const": false },
+          "steps": {
+            "type": "array",
+            "contains": {
+              "type": "object",
+              "required": ["checkpoint", "passed"],
+              "properties": {
+                "checkpoint": { "const": true },
+                "passed": { "const": true }
+              }
+            }
+          }
+        }
+      },
+      "then": { "properties": { "verified": { "const": true } } }
     }
   ],
   "$defs": {
@@ -147,6 +204,26 @@
               "checkpoint": { "const": false },
               "passed": { "const": false },
               "status": { "not": { "const": "passed" } }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["status"],
+            "properties": { "status": { "const": "pending_visual_review" } }
+          },
+          "then": { "properties": { "action": { "const": "screenshot" } } }
+        },
+        {
+          "if": {
+            "required": ["passed"],
+            "properties": { "passed": { "const": true } }
+          },
+          "then": {
+            "properties": {
+              "action": {
+                "enum": ["query", "launch", "press", "text", "pause"]
+              }
             }
           }
         }
