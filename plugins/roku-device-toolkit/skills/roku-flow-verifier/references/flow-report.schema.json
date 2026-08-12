@@ -34,7 +34,36 @@
         "properties": {
           "dry_run": { "const": false },
           "verified": { "const": true },
-          "pending_visual_review": { "const": false }
+          "pending_visual_review": { "const": false },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["passed"],
+              "properties": { "passed": { "const": true } }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["verified"],
+        "properties": { "verified": { "const": true } }
+      },
+      "then": {
+        "properties": {
+          "steps": {
+            "type": "array",
+            "contains": {
+              "type": "object",
+              "required": ["checkpoint", "passed"],
+              "properties": {
+                "checkpoint": { "const": true },
+                "passed": { "const": true }
+              }
+            }
+          }
         }
       }
     }

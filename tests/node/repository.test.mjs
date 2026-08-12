@@ -78,6 +78,18 @@ test("flow schemas and examples expose stable public contracts", () => {
     { ...baseReport, pending_visual_review: undefined },
     { ...baseReport, steps: [{ ...baseReport.steps[0], passed: false }] },
     { ...baseReport, steps: [{ ...baseReport.steps[0], status: "failed" }] },
+    {
+      ...baseReport,
+      steps: [
+        baseReport.steps[0],
+        { ...baseReport.steps[0], index: 2, passed: false, status: "failed" },
+      ],
+    },
+    {
+      ...baseReport,
+      passed: false,
+      steps: [{ ...baseReport.steps[0], checkpoint: false, passed: false, status: "failed" }],
+    },
   ]) {
     if (invalid.pending_visual_review === undefined) delete invalid.pending_visual_review;
     assert.equal(validateReport(invalid), false, JSON.stringify(invalid));
@@ -131,6 +143,13 @@ test("flow schemas and examples expose stable public contracts", () => {
     name: "\uFEFF",
     steps: [{ action: "screenshot", save: "screen.png" }],
   }, "Python-nonblank byte order mark");
+  assertSchemaValid(validateScenario, {
+    name: "flow\u0000name",
+    steps: [
+      { action: "query", kind: "active-app", contains: "dev\u0000" },
+      { action: "screenshot", save: "screen.png" },
+    ],
+  }, "control characters in non-command metadata");
   for (const host of [
     "", "http://roku.local", "roku.local:8060", "roku.local/path",
     "roku.local?query", "roku.local#fragment", "user@roku.local", "\u001c", "\u00a0",
