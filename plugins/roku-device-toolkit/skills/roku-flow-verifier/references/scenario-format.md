@@ -22,6 +22,14 @@ python3 "<roku-flow-verifier-skill-dir>/scripts/run_flow.py" \
 `--dry-run` performs runner preflight without device actions and writes a report describing any
 invalid steps. The host may instead come from `ROKU_DEV_TARGET` or saved toolkit configuration.
 
+JSON Schema cannot require step indices to form a unique sequence. After validating a report with
+`flow-report.schema.json`, run the companion semantic check:
+
+```bash
+python3 "<roku-flow-verifier-skill-dir>/scripts/validate_flow_report.py" \
+  /tmp/roku-flow/report.json
+```
+
 ```json
 {
   "name": "launch-and-open-sidebar",

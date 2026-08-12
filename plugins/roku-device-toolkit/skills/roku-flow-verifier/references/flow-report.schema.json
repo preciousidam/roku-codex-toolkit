@@ -146,6 +146,40 @@
         }
       },
       "then": { "properties": { "verified": { "const": true } } }
+    },
+    {
+      "if": {
+        "properties": {
+          "steps": {
+            "type": "array",
+            "contains": {
+              "type": "object",
+              "required": ["checkpoint"],
+              "properties": { "checkpoint": { "const": true } }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": { "checkpoint_count": { "type": "integer", "minimum": 1 } }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "steps": {
+            "type": "array",
+            "contains": {
+              "type": "object",
+              "required": ["action"],
+              "properties": { "action": { "const": "screenshot" } }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": { "screenshot_count": { "type": "integer", "minimum": 1 } }
+      }
     }
   ],
   "$defs": {

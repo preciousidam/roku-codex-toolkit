@@ -111,6 +111,7 @@ test("flow schemas and examples expose stable public contracts", () => {
     { ...baseReport, passed: false, verified: false },
     { ...baseReport, passed: false, verified: false, dry_run: true },
     { ...baseReport, passed: false, verified: false, steps: [] },
+    { ...baseReport, checkpoint_count: 0 },
     {
       ...baseReport,
       passed: false,
@@ -125,6 +126,18 @@ test("flow schemas and examples expose stable public contracts", () => {
       pending_visual_review: true,
       steps: [{
         index: 1, action: "launch", checkpoint: false, passed: false,
+        status: "pending_visual_review", duration_seconds: 0,
+      }],
+    },
+    {
+      ...baseReport,
+      passed: false,
+      verified: false,
+      checkpoint_count: 0,
+      screenshot_count: 0,
+      pending_visual_review: true,
+      steps: [{
+        index: 1, action: "screenshot", checkpoint: false, passed: false,
         status: "pending_visual_review", duration_seconds: 0,
       }],
     },

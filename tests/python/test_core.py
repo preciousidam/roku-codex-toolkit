@@ -22,6 +22,10 @@ def load(name, relative):
 config = load("roku_config_test", "plugins/roku-device-toolkit/scripts/roku_config.py")
 device = load("roku_device_test", "plugins/roku-device-toolkit/skills/roku-device-operator/scripts/roku_device.py")
 flow = load("roku_flow_test", "plugins/roku-device-toolkit/skills/roku-flow-verifier/scripts/run_flow.py")
+report_validator = load(
+    "roku_report_validator_test",
+    "plugins/roku-device-toolkit/skills/roku-flow-verifier/scripts/validate_flow_report.py",
+)
 analyzer = load("roku_log_test", "plugins/roku-engineering/skills/roku-runtime-log-analyzer/scripts/analyze_roku_log.py")
 server = load("roku_server_test", "plugins/roku-device-toolkit/mcp/server.py")
 
@@ -151,6 +155,14 @@ class FlowTests(unittest.TestCase):
     def test_screenshot_is_not_automatic_verification(self):
         self.assertFalse(flow.is_verification_checkpoint({"action": "screenshot", "save": "screen.jpg"}))
         self.assertTrue(flow.is_verification_checkpoint({"action": "query", "kind": "player", "contains": "play"}))
+
+    def test_report_indices_are_a_unique_sequence(self):
+        report_validator.validate_report_semantics({"steps": [{"index": 1}, {"index": 2}]})
+        for indices in ([2], [1, 1], [1, 3]):
+            with self.subTest(indices=indices), self.assertRaisesRegex(ValueError, "unique sequence"):
+                report_validator.validate_report_semantics(
+                    {"steps": [{"index": index} for index in indices]}
+                )
 
 
 class AnalyzerTests(unittest.TestCase):
