@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { stagePackageSource } from "./package-staging.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "roku-toolkit-package-"));
@@ -48,10 +49,7 @@ function runExpectFailure(command, args, options = {}) {
 }
 
 try {
-  fs.cpSync(root, packRoot, {
-    recursive: true,
-    filter: (source) => ![".git", "node_modules"].includes(path.basename(source)),
-  });
+  stagePackageSource(root, packRoot);
   for (const fixture of [
     path.join(packRoot, "plugins", "roku-device-toolkit", "mcp", "__pycache__", "secret.pyc"),
     path.join(packRoot, "plugins", "roku-device-toolkit", "mcp", "evidence", "private.log"),
@@ -324,6 +322,9 @@ try {
   }
   if (!firstInstallCalls.some((args) => args.join(" ") === "plugin remove roku-device-toolkit@roku-codex-toolkit")) {
     throw new Error("Failed first-time plugin installation did not remove the partially installed plugin.");
+  }
+  if (!firstInstallCalls.some((args) => args.join(" ") === "plugin remove roku-engineering@roku-codex-toolkit")) {
+    throw new Error("Failed first-time plugin installation did not remove the in-flight plugin.");
   }
 
   fs.writeFileSync(commandLog, "");

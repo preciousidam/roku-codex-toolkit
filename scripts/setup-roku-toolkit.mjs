@@ -148,11 +148,14 @@ if (addMarketplace.status !== 0) {
 
 try {
   for (const pluginName of pluginNames) {
+    // A timed-out or failed Codex command may have changed persistent plugin
+    // state before reporting failure, so rollback must include the in-flight
+    // plugin as well as commands that returned successfully.
+    installedThisAttempt.push(pluginName);
     requireSuccess(
       run("codex", ["plugin", "add", `${pluginName}@${marketplaceName}`]),
       `Installing ${pluginName}`,
     );
-    installedThisAttempt.push(pluginName);
   }
 } catch (error) {
   throwWithRollbackErrors(error, restorePreviousMarketplace());
