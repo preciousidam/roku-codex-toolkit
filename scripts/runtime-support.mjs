@@ -11,31 +11,30 @@ export function requireSupportedNode() {
   }
 }
 
-export function quoteWindowsCommandArg(value) {
-  const escaped = String(value)
-    .replace(/(\\*)"/g, "$1$1\\\"")
-    .replace(/(\\+)$/g, "$1$1");
-  return `"${escaped}"`;
-}
-
-export function buildWindowsCommandLine(command, args) {
-  const invocation = [command, ...args].map(quoteWindowsCommandArg).join(" ");
-  // cmd.exe /s strips the first and last quote. Keep those separate from the
-  // quotes protecting each executable/argument so paths and metacharacters
-  // remain literal after that stripping.
-  return `"${invocation}"`;
+export function buildWindowsShimInvocation(command, args) {
+  const values = [command, ...args].map(String);
+  const environment = Object.fromEntries(values.map((value, index) => [
+    `ROKU_TOOLKIT_SHIM_${index}`,
+    value,
+  ]));
+  const invocation = values.map((_, index) => `"%ROKU_TOOLKIT_SHIM_${index}%"`).join(" ");
+  // cmd.exe expands only these fixed variable names. Percent signs and shell
+  // metacharacters inside their values are not interpolated into the command
+  // source before expansion, and remain protected by the surrounding quotes.
+  return { commandLine: `"${invocation}"`, environment };
 }
 
 export function commandStatus(command, args, options = {}) {
   const useWindowsShim = process.platform === "win32" && options.windowsShim;
   const executable = useWindowsShim ? (process.env.ComSpec || "cmd.exe") : command;
-  const commandLine = buildWindowsCommandLine(command, args);
-  const executableArgs = useWindowsShim ? ["/d", "/s", "/c", commandLine] : args;
+  const shim = useWindowsShim ? buildWindowsShimInvocation(command, args) : undefined;
+  const executableArgs = useWindowsShim ? ["/d", "/v:off", "/s", "/c", shim.commandLine] : args;
   const { windowsShim: _windowsShim, ...spawnOptions } = options;
   return spawnSync(executable, executableArgs, {
     encoding: "utf8",
     windowsVerbatimArguments: useWindowsShim,
     ...spawnOptions,
+    ...(useWindowsShim ? { env: { ...process.env, ...spawnOptions.env, ...shim.environment } } : {}),
   });
 }
 
