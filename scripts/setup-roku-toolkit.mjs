@@ -14,7 +14,7 @@ const sourceCheckout = fs.existsSync(path.join(repoRoot, ".git"));
 const pluginNames = ["roku-device-toolkit", "roku-engineering"];
 const configScript = path.join(repoRoot, "plugins/roku-device-toolkit/scripts/roku_config.py");
 const skipConfig = process.argv.includes("--skip-config");
-if (process.argv.includes("--help")) {
+if (process.argv.includes("--help") || process.argv.includes("-h")) {
   console.log("Usage: roku-codex-toolkit setup [--skip-config]");
   process.exit(0);
 }
@@ -65,8 +65,8 @@ const desiredArgs = sourceCheckout
 
 function restorePreviousMarketplace() {
   const previous = existingMarketplace?.marketplaceSource;
-  if (!previous?.source) return;
   run("codex", ["plugin", "marketplace", "remove", marketplaceName]);
+  if (!previous?.source) return;
   const restoreArgs = ["plugin", "marketplace", "add", previous.source];
   if (previous.ref) restoreArgs.push("--ref", previous.ref);
   requireSuccess(run("codex", restoreArgs), "Restoring the previous Roku Codex Toolkit marketplace");

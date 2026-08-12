@@ -4,7 +4,7 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { requireSupportedNode } from "../../scripts/runtime-support.mjs";
+import { quoteWindowsCommandArg, requireSupportedNode } from "../../scripts/runtime-support.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const pluginRoots = ["roku-device-toolkit", "roku-engineering"].map((name) => path.join(root, "plugins", name));
@@ -64,4 +64,10 @@ test("setup runtime rejects unsupported Node versions", () => {
   } finally {
     Object.defineProperty(process.versions, "node", { configurable: true, value: original });
   }
+});
+
+test("Windows shim arguments are quoted as one literal command", () => {
+  assert.equal(quoteWindowsCommandArg("C:\\work & tools\\plugin"), '"C:\\work & tools\\plugin"');
+  assert.equal(quoteWindowsCommandArg("100% ready"), '"100%% ready"');
+  assert.equal(quoteWindowsCommandArg('say "hello"'), '"say \\"hello\\""');
 });

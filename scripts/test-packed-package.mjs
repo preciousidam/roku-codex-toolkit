@@ -122,6 +122,10 @@ try {
   };
   run(process.execPath, [cli, "doctor"], { cwd: temporary, env: fakeEnvironment });
   fs.rmSync(commandLog, { force: true });
+  run(process.execPath, [cli, "setup", "-h"], { cwd: temporary, env: fakeEnvironment });
+  if (fs.existsSync(commandLog)) {
+    throw new Error("setup -h changed or inspected Codex state.");
+  }
   const missingPython = runExpectFailure(process.execPath, [cli, "setup", "--skip-config"], {
     cwd: temporary,
     env: { ...packageTestEnv, PATH: fakeBin, FAKE_CODEX_LOG: commandLog },
@@ -180,6 +184,17 @@ try {
   }
   if (pluginRollbackCalls.filter((args) => args[0] === "plugin" && args[1] === "add").length !== 4) {
     throw new Error("Plugin installation failure did not restore both previous plugins.");
+  }
+
+  fs.writeFileSync(commandLog, "");
+  fs.rmSync(pluginFailureMarker, { force: true });
+  runExpectFailure(process.execPath, [cli, "setup", "--skip-config"], {
+    cwd: temporary,
+    env: { ...fakeEnvironment, FAIL_SECOND_PLUGIN: pluginFailureMarker },
+  });
+  const firstInstallCalls = fs.readFileSync(commandLog, "utf8").trim().split(/\r?\n/).map(JSON.parse);
+  if (!firstInstallCalls.some((args) => args.join(" ") === "plugin marketplace remove roku-codex-toolkit")) {
+    throw new Error("Failed first-time plugin installation did not clean up the partial marketplace.");
   }
 
   fs.writeFileSync(commandLog, "");

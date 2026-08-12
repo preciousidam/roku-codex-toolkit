@@ -3,9 +3,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { requirePython } from "./runtime-support.mjs";
+import { requirePython, requireSupportedNode } from "./runtime-support.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+requireSupportedNode();
 const required = [
   ".agents/plugins/marketplace.json",
   "plugins/roku-device-toolkit/.codex-plugin/plugin.json",

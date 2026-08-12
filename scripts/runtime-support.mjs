@@ -11,10 +11,19 @@ export function requireSupportedNode() {
   }
 }
 
+export function quoteWindowsCommandArg(value) {
+  const escaped = String(value)
+    .replaceAll("%", "%%")
+    .replace(/(\\*)"/g, "$1$1\\\"")
+    .replace(/(\\+)$/g, "$1$1");
+  return `"${escaped}"`;
+}
+
 export function commandStatus(command, args, options = {}) {
   const useWindowsShim = process.platform === "win32" && options.windowsShim;
   const executable = useWindowsShim ? (process.env.ComSpec || "cmd.exe") : command;
-  const executableArgs = useWindowsShim ? ["/d", "/s", "/c", command, ...args] : args;
+  const commandLine = [command, ...args].map(quoteWindowsCommandArg).join(" ");
+  const executableArgs = useWindowsShim ? ["/d", "/s", "/c", commandLine] : args;
   const { windowsShim: _windowsShim, ...spawnOptions } = options;
   return spawnSync(executable, executableArgs, {
     encoding: "utf8",
