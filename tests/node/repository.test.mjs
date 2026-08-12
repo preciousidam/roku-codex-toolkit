@@ -68,6 +68,8 @@ test("flow schemas and examples expose stable public contracts", () => {
     "query\u0000.xml", "screen\u0000.jpg",
     "screen?.jpg", "screen<1>.jpg", "folder|name/screen.jpg", "folder/name. ",
     "CON.jpg", "aux", "nested/PRN.xml", "nested\\LPT9.png",
+    "COM¹.png", "nested/COM².jpg", "nested\\LPT³.png",
+    "\u00a0",
   ]) {
     const invalid = {
       steps: [{ action: "query", kind: "active-app", contains: "dev", save }],
@@ -81,7 +83,10 @@ test("flow schemas and examples expose stable public contracts", () => {
     const valid = { steps: [{ action: "screenshot", save }] };
     assertSchemaValid(validateScenario, valid, save);
   }
-  for (const save of ["screen.gif", "screen.bmp", "screen.png.tmp", "screen\u0000.jpg"]) {
+  for (const save of [
+    "screen.gif", "screen.bmp", "screen.png.tmp", "screen\u0000.jpg",
+    ".jpg", ".jpeg", ".png", "captures/.png", "captures\\.jpg",
+  ]) {
     const invalid = { steps: [{ action: "screenshot", save }] };
     assert.equal(validateScenario(invalid), false, save);
   }
@@ -93,12 +98,24 @@ test("flow schemas and examples expose stable public contracts", () => {
     host: null,
     steps: [{ action: "screenshot", save: "screen.png" }],
   }, "nullable host");
+  assertSchemaValid(validateScenario, {
+    name: "\uFEFF",
+    steps: [{ action: "screenshot", save: "screen.png" }],
+  }, "Python-nonblank byte order mark");
   for (const host of [
     "", "http://roku.local", "roku.local:8060", "roku.local/path",
-    "roku.local?query", "roku.local#fragment", "user@roku.local",
+    "roku.local?query", "roku.local#fragment", "user@roku.local", "\u001c", "\u00a0",
   ]) {
     const invalid = { host, steps: [{ action: "screenshot", save: "screen.png" }] };
     assert.equal(validateScenario(invalid), false, host);
+  }
+  for (const invalid of [
+    { name: "\u001c", steps: [{ action: "screenshot", save: "screen.png" }] },
+    { steps: [{ action: "query", kind: "active-app", contains: "\u001d" }] },
+    { steps: [{ action: "launch", channel_id: "\u001e" }, { action: "screenshot", save: "screen.png" }] },
+    { steps: [{ action: "press", keys: ["\u001f"] }, { action: "screenshot", save: "screen.png" }] },
+  ]) {
+    assert.equal(validateScenario(invalid), false, JSON.stringify(invalid));
   }
   assertSchemaValid(validateScenario, {
     steps: [
