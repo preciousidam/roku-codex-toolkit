@@ -35,6 +35,7 @@ export function commandStatus(command, args, options = {}) {
   const { windowsShim: _windowsShim, ...spawnOptions } = options;
   return spawnSync(executable, executableArgs, {
     encoding: "utf8",
+    windowsVerbatimArguments: useWindowsShim,
     ...spawnOptions,
   });
 }
@@ -62,6 +63,13 @@ export function requirePython() {
 }
 
 export function commandAvailable(command, args = ["--version"]) {
-  const result = commandStatus(command, args, { timeout: 10_000, windowsShim: true });
-  return !result.error && result.status === 0;
+  const direct = commandStatus(command, args, { timeout: 10_000 });
+  if (!direct.error && direct.status === 0) return true;
+  if (process.platform !== "win32") return false;
+
+  // Windows can execute .exe files directly, while npm-installed .cmd/.bat
+  // launchers require cmd.exe. Keep that shell fallback out of the normal
+  // executable path so tools such as Git are detected without cmd parsing.
+  const shim = commandStatus(command, args, { timeout: 10_000, windowsShim: true });
+  return !shim.error && shim.status === 0;
 }
