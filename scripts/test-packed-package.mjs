@@ -17,6 +17,10 @@ const npmPrefix = process.platform === "win32"
 if (process.platform === "win32" && !npmPrefix[0]) {
   throw new Error("npm_execpath is required to run packed-package tests on Windows.");
 }
+const ignoredFixtures = [
+  path.join(root, "plugins", "roku-device-toolkit", "mcp", "__pycache__", "secret.pyc"),
+  path.join(root, "plugins", "roku-device-toolkit", "mcp", "evidence", "private.log"),
+];
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -47,6 +51,10 @@ function runExpectFailure(command, args, options = {}) {
 }
 
 try {
+  for (const fixture of ignoredFixtures) {
+    fs.mkdirSync(path.dirname(fixture), { recursive: true });
+    fs.writeFileSync(fixture, "must not ship");
+  }
   const packed = JSON.parse(run(
     npmCommand,
     [...npmPrefix, "pack", "--json", "--pack-destination", temporary],
@@ -116,7 +124,18 @@ try {
   if (calls.filter((args) => args[0] === "plugin" && args[1] === "add").length !== 2) {
     throw new Error("Packed setup did not install both plugins.");
   }
+  const marketplaceAdd = calls.find(
+    (args) => args[0] === "plugin" && args[1] === "marketplace" && args[2] === "add",
+  );
+  if (marketplaceAdd?.[3] !== "preciousidam/roku-codex-toolkit" || marketplaceAdd?.[4] !== "--ref") {
+    throw new Error("Packed setup did not register the durable versioned Git marketplace.");
+  }
   console.log(`Packed tarball validation passed (${packed.files.length} files, ${packed.size} bytes).`);
 } finally {
+  for (const fixture of ignoredFixtures) fs.rmSync(fixture, { force: true });
+  for (const directory of [
+    path.join(root, "plugins", "roku-device-toolkit", "mcp", "__pycache__"),
+    path.join(root, "plugins", "roku-device-toolkit", "mcp", "evidence"),
+  ]) fs.rmSync(directory, { recursive: true, force: true });
   fs.rmSync(temporary, { recursive: true, force: true });
 }

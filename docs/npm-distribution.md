@@ -10,7 +10,7 @@ The CLI exposes:
 
 - `roku-codex-toolkit doctor` for runtime discovery.
 - `roku-codex-toolkit validate` for installed-tarball integrity and runtime validation.
-- `roku-codex-toolkit setup` for explicit Codex marketplace and plugin installation.
+- `roku-codex-toolkit setup` for explicit installation from the matching versioned Git tag. The npm cache is not used as a persistent marketplace path.
 
 There is no `postinstall` script. Installation alone performs no configuration changes, network requests, credential prompts, or device operations.
 

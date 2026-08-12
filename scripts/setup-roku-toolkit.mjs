@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
+import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import process from "node:process";
@@ -8,6 +9,8 @@ import { requirePython } from "./runtime-support.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const marketplaceName = "roku-codex-toolkit";
+const marketplaceSource = "preciousidam/roku-codex-toolkit";
+const packageVersion = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8")).version;
 const pluginNames = ["roku-device-toolkit", "roku-engineering"];
 const configScript = path.join(repoRoot, "plugins/roku-device-toolkit/scripts/roku_config.py");
 const skipConfig = process.argv.includes("--skip-config");
@@ -17,7 +20,10 @@ if (process.argv.includes("--help")) {
 }
 
 function run(command, args, options = {}) {
-  const result = spawnSync(command, args, {
+  const useWindowsShim = process.platform === "win32" && command === "codex";
+  const executable = useWindowsShim ? (process.env.ComSpec || "cmd.exe") : command;
+  const executableArgs = useWindowsShim ? ["/d", "/s", "/c", command, ...args] : args;
+  const result = spawnSync(executable, executableArgs, {
     cwd: repoRoot,
     encoding: "utf8",
     stdio: options.capture ? "pipe" : "inherit",
@@ -43,19 +49,16 @@ const marketplaceLine = marketplaceOutput
   .split(/\r?\n/)
   .map((line) => line.trim())
   .find((line) => line.startsWith(`${marketplaceName} `));
-const registeredRoot = marketplaceLine?.slice(marketplaceName.length).trim();
-if (registeredRoot && path.resolve(registeredRoot) !== repoRoot) {
+if (marketplaceLine) {
   requireSuccess(
     run("codex", ["plugin", "marketplace", "remove", marketplaceName]),
-    "Removing a stale Roku Codex Toolkit marketplace",
+    "Removing the existing Roku Codex Toolkit marketplace",
   );
 }
-if (!registeredRoot || path.resolve(registeredRoot) !== repoRoot) {
-  requireSuccess(
-    run("codex", ["plugin", "marketplace", "add", repoRoot]),
-    "Adding the Roku Codex Toolkit marketplace",
-  );
-}
+requireSuccess(
+  run("codex", ["plugin", "marketplace", "add", marketplaceSource, "--ref", `v${packageVersion}`]),
+  "Adding the versioned Roku Codex Toolkit Git marketplace",
+);
 
 for (const pluginName of pluginNames) {
   requireSuccess(

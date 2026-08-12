@@ -36,7 +36,7 @@ npx roku-codex-toolkit doctor
 npx roku-codex-toolkit setup
 ```
 
-Python 3.9+ remains an external requirement; the npm package does not bundle Python. `setup` performs its Node, Python, and Codex preflight before changing Codex configuration. Use `--skip-config` to install the plugins without prompting for a Roku target.
+Python 3.9+ remains an external requirement; the npm package does not bundle Python. `setup` performs its Node, Python, and Codex preflight before changing Codex configuration, then registers the matching versioned Git tag as the durable marketplace source. The transient `npx` cache is never registered. Use `--skip-config` to install the plugins without prompting for a Roku target.
 
 To upgrade, run the setup command with the desired npm version. To remove the distribution, uninstall the npm package and remove the installed plugins or marketplace with the Codex CLI. Existing Roku configuration is intentionally retained so uninstalling cannot silently delete user data.
 
