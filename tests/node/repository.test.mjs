@@ -66,13 +66,18 @@ test("flow schemas and examples expose stable public contracts", () => {
     "../escape.jpg", "/tmp/output.jpg", "C:\\output.jpg", "report.json",
     "./report.json", ".\\report.json", "././REPORT.JSON", "./.", ".\\.",
     "query\u0000.xml", "screen\u0000.jpg",
+    "screen?.jpg", "screen<1>.jpg", "folder|name/screen.jpg", "folder/name. ",
+    "CON.jpg", "aux", "nested/PRN.xml", "nested\\LPT9.png",
   ]) {
     const invalid = {
       steps: [{ action: "query", kind: "active-app", contains: "dev", save }],
     };
     assert.equal(validateScenario(invalid), false, save);
   }
-  for (const save of ["screen.jpg", "screen.JPEG", "screen.png", "screen.PNG", "./screen.png"]) {
+  for (const save of [
+    "screen.jpg", "screen.JPEG", "screen.png", "screen.PNG", "./screen.png",
+    "nested/screens/screen-01.png", "nested\\screens\\screen_01.jpg",
+  ]) {
     const valid = { steps: [{ action: "screenshot", save }] };
     assertSchemaValid(validateScenario, valid, save);
   }
