@@ -41,20 +41,20 @@
   "$defs": {
     "nonBlankString": {
       "allOf": [
-        { "$ref": "#/$defs/nulFreeString" },
+        { "$ref": "#/$defs/portableString" },
         {
           "type": "string",
           "pattern": "[^\\u0009-\\u000D\\u001C-\\u0020\\u0085\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000]"
         }
       ]
     },
-    "nulFreeString": {
+    "portableString": {
       "type": "string",
-      "pattern": "^[^\\u0000]*$"
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
     },
     "bareHost": {
       "type": "string",
-      "pattern": "^[\\u0009-\\u000D\\u001C-\\u0020\\u0085\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000]*[^\\u0000-\\u0020\\u007F-\\u009F\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000:/?#@]+[\\u0009-\\u000D\\u001C-\\u0020\\u0085\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000]*$",
+      "pattern": "^[\\u0009-\\u000D\\u001C-\\u0020\\u0085\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000]*[A-Za-z0-9.-]+[\\u0009-\\u000D\\u001C-\\u0020\\u0085\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000]*$",
       "description": "A bare IP address or hostname without a scheme, port, path, query, fragment, or user information."
     },
     "artifactPath": {
@@ -100,10 +100,10 @@
         "action": { "const": "launch" },
         "channel_id": { "$ref": "#/$defs/nonBlankString" },
         "content_id": {
-          "anyOf": [{ "$ref": "#/$defs/nulFreeString" }, { "type": "null" }]
+          "anyOf": [{ "$ref": "#/$defs/portableString" }, { "type": "null" }]
         },
         "media_type": {
-          "anyOf": [{ "$ref": "#/$defs/nulFreeString" }, { "type": "null" }]
+          "anyOf": [{ "$ref": "#/$defs/portableString" }, { "type": "null" }]
         }
       }
     },
@@ -127,7 +127,7 @@
       "required": ["action", "value"],
       "properties": {
         "action": { "const": "text" },
-        "value": { "$ref": "#/$defs/nulFreeString" },
+        "value": { "$ref": "#/$defs/portableString" },
         "delay": { "type": "number", "minimum": 0, "maximum": 10, "default": 0.05 }
       }
     },

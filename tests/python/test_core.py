@@ -128,6 +128,23 @@ class FlowTests(unittest.TestCase):
              mock.patch.object(flow.time, "monotonic", return_value=12.75):
             self.assertEqual(flow.elapsed_seconds(10), 2.75)
 
+    def test_launch_metadata_preserves_option_like_values(self):
+        command, artifact = flow.command_for(
+            {
+                "action": "launch",
+                "channel_id": "dev",
+                "content_id": "--preview",
+                "media_type": "-movie",
+            },
+            "roku.local",
+            Path("/tmp/evidence"),
+        )
+        self.assertIsNone(artifact)
+        self.assertIn("--content-id=--preview", command)
+        self.assertIn("--media-type=-movie", command)
+        self.assertNotIn("--content-id", command)
+        self.assertNotIn("--media-type", command)
+
     def test_screenshot_is_not_automatic_verification(self):
         self.assertFalse(flow.is_verification_checkpoint({"action": "screenshot", "save": "screen.jpg"}))
         self.assertTrue(flow.is_verification_checkpoint({"action": "query", "kind": "player", "contains": "play"}))

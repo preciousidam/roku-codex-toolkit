@@ -59,6 +59,8 @@ test("flow schemas and examples expose stable public contracts", () => {
     new Set(reportSchema.$defs.stepResult.properties.status.enum),
     new Set(["passed", "failed", "skipped", "invalid", "pending_visual_review"]),
   );
+  assert.ok(reportSchema.$defs.stepResult.required.includes("action"));
+  assert.ok(reportSchema.$defs.stepResult.required.includes("checkpoint"));
   for (const name of fs.readdirSync(path.join(root, "examples", "flow"))) {
     const example = readJson(path.join(root, "examples", "flow", name));
     assertSchemaValid(validateScenario, example, name);
@@ -112,6 +114,7 @@ test("flow schemas and examples expose stable public contracts", () => {
     "", "http://roku.local", "roku.local:8060", "roku.local/path",
     "roku.local?query", "roku.local#fragment", "user@roku.local", "\u001c", "\u00a0",
     "roku\u0000.local", "roku local", "roku\tlocal", "roku\u0001.local",
+    "[roku.local", "roku.local]", "roku_local",
   ]) {
     const invalid = { host, steps: [{ action: "screenshot", save: "screen.png" }] };
     assert.equal(validateScenario(invalid), false, host);
@@ -126,6 +129,11 @@ test("flow schemas and examples expose stable public contracts", () => {
     { steps: [{ action: "text", value: "hello\u0000" }, { action: "screenshot", save: "screen.png" }] },
     { steps: [{ action: "launch", channel_id: "dev", content_id: "item\u0000" }, { action: "screenshot", save: "screen.png" }] },
     { steps: [{ action: "launch", channel_id: "dev", media_type: "movie\u0000" }, { action: "screenshot", save: "screen.png" }] },
+    { steps: [{ action: "launch", channel_id: "dev\uD800" }, { action: "screenshot", save: "screen.png" }] },
+    { steps: [{ action: "press", keys: ["Home\uDFFF"] }, { action: "screenshot", save: "screen.png" }] },
+    { steps: [{ action: "text", value: "hello\uD800" }, { action: "screenshot", save: "screen.png" }] },
+    { steps: [{ action: "launch", channel_id: "dev", content_id: "item\uDFFF" }, { action: "screenshot", save: "screen.png" }] },
+    { steps: [{ action: "launch", channel_id: "dev", media_type: "movie\uD800" }, { action: "screenshot", save: "screen.png" }] },
   ]) {
     assert.equal(validateScenario(invalid), false, JSON.stringify(invalid));
   }

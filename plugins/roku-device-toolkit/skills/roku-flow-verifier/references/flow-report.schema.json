@@ -27,7 +27,9 @@
     "stepResult": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["index", "passed", "status", "duration_seconds"],
+      "required": [
+        "index", "action", "checkpoint", "passed", "status", "duration_seconds"
+      ],
       "properties": {
         "index": { "type": "integer", "minimum": 1 },
         "started_at": { "type": "number" },

@@ -127,7 +127,7 @@ def command_for(step: dict, host: str, evidence: Path) -> tuple[Optional[list[st
             if step.get(field) is not None:
                 if not isinstance(step[field], str):
                     raise ValueError(f"launch {field} must be a string when provided")
-                command += [option, step[field]]
+                command.append(f"{option}={step[field]}")
         command += ["--", channel]
         return command, None
     if action == "press":
