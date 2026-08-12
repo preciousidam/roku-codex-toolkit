@@ -9,8 +9,14 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "roku-toolkit-package-"));
-const npm = process.platform === "win32" ? "npm.cmd" : "npm";
 const packageTestEnv = { ...process.env, npm_config_cache: path.join(temporary, "npm-cache") };
+const npmCommand = process.platform === "win32" ? process.execPath : "npm";
+const npmPrefix = process.platform === "win32"
+  ? [process.env.npm_execpath ?? ""]
+  : [];
+if (process.platform === "win32" && !npmPrefix[0]) {
+  throw new Error("npm_execpath is required to run packed-package tests on Windows.");
+}
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -41,7 +47,10 @@ function runExpectFailure(command, args, options = {}) {
 }
 
 try {
-  const packed = JSON.parse(run(npm, ["pack", "--json", "--pack-destination", temporary]).stdout)[0];
+  const packed = JSON.parse(run(
+    npmCommand,
+    [...npmPrefix, "pack", "--json", "--pack-destination", temporary],
+  ).stdout)[0];
   const names = new Set(packed.files.map((file) => file.path.replaceAll("\\", "/")));
   for (const required of [
     "package.json",
@@ -61,7 +70,10 @@ try {
 
   const prefix = path.join(temporary, "install");
   const tarball = path.join(temporary, packed.filename);
-  run(npm, ["install", "--ignore-scripts", "--no-audit", "--no-fund", "--prefix", prefix, tarball]);
+  run(npmCommand, [
+    ...npmPrefix,
+    "install", "--ignore-scripts", "--no-audit", "--no-fund", "--prefix", prefix, tarball,
+  ]);
   const installedRoot = path.join(prefix, "node_modules", "roku-codex-toolkit");
   const cli = path.join(installedRoot, "bin", "roku-codex-toolkit.mjs");
   run(process.execPath, [cli, "doctor", "--no-codex"], { cwd: temporary });
