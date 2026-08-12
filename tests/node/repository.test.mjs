@@ -39,3 +39,17 @@ test("device plugin exposes the portable launcher", () => {
   assert.equal(config.mcpServers["roku-device"].cwd, ".");
   assert.equal(config.mcpServers["roku-device"].command, "node");
 });
+
+test("npm metadata exposes a side-effect-free public CLI package", () => {
+  const metadata = readJson(path.join(root, "package.json"));
+  assert.equal(metadata.private, undefined);
+  assert.equal(metadata.bin["roku-codex-toolkit"], "./bin/roku-codex-toolkit.mjs");
+  assert.equal(metadata.publishConfig.access, "public");
+  assert.equal(metadata.publishConfig.provenance, true);
+  assert.equal(metadata.scripts.postinstall, undefined);
+  assert.ok(metadata.files.includes("plugins/"));
+  assert.ok(!metadata.files.includes("tests/"));
+  for (const pluginRoot of pluginRoots) {
+    assert.equal(readJson(path.join(pluginRoot, ".codex-plugin/plugin.json")).version, metadata.version);
+  }
+});

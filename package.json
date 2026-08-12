@@ -1,17 +1,46 @@
 {
   "name": "roku-codex-toolkit",
   "version": "0.1.0",
-  "private": true,
+  "description": "Codex plugins and cross-platform CLI tooling for Roku development, device automation, and evidence-aware flow verification.",
   "license": "Apache-2.0",
   "type": "module",
+  "bin": {
+    "roku-codex-toolkit": "./bin/roku-codex-toolkit.mjs"
+  },
+  "files": [
+    ".agents/plugins/marketplace.json",
+    "bin/",
+    "plugins/",
+    "scripts/doctor-roku-toolkit.mjs",
+    "scripts/runtime-support.mjs",
+    "scripts/setup-roku-toolkit.mjs",
+    "scripts/validate-install.mjs",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/preciousidam/roku-codex-toolkit.git"
+  },
+  "homepage": "https://github.com/preciousidam/roku-codex-toolkit#readme",
+  "bugs": {
+    "url": "https://github.com/preciousidam/roku-codex-toolkit/issues"
+  },
+  "keywords": ["roku", "codex", "brightscript", "scenegraph", "mcp", "device-testing"],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "setup": "node scripts/setup-roku-toolkit.mjs",
+    "doctor": "node scripts/doctor-roku-toolkit.mjs",
+    "validate:install": "node scripts/validate-install.mjs",
+    "test:package": "node scripts/test-packed-package.mjs",
     "test:node": "node scripts/validate-roku-toolkit.mjs --node-only",
     "test:python": "node scripts/validate-roku-toolkit.mjs --python-only",
     "validate": "node scripts/validate-roku-toolkit.mjs"
   },
   "engines": {
-    "node": ">=18",
-    "python": ">=3.9"
+    "node": ">=18"
   }
 }

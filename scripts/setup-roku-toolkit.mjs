@@ -3,12 +3,18 @@
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import process from "node:process";
+import { requirePython } from "./runtime-support.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const marketplaceName = "roku-codex-toolkit";
 const pluginNames = ["roku-device-toolkit", "roku-engineering"];
 const configScript = path.join(repoRoot, "plugins/roku-device-toolkit/scripts/roku_config.py");
 const skipConfig = process.argv.includes("--skip-config");
+if (process.argv.includes("--help")) {
+  console.log("Usage: roku-codex-toolkit setup [--skip-config]");
+  process.exit(0);
+}
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -28,6 +34,8 @@ function requireSuccess(result, description) {
   }
 }
 
+// Finish runtime preflight before changing Codex marketplace or plugin state.
+const python = requirePython();
 const marketplaces = run("codex", ["plugin", "marketplace", "list"], { capture: true });
 requireSuccess(marketplaces, "Reading Codex marketplaces");
 const marketplaceOutput = `${marketplaces.stdout}\n${marketplaces.stderr}`;
@@ -57,21 +65,6 @@ for (const pluginName of pluginNames) {
 }
 
 if (!skipConfig) {
-  const python = [
-    { command: "python3", args: [] },
-    { command: "python", args: [] },
-    { command: "py", args: ["-3"] },
-  ].find((candidate) => {
-    const result = spawnSync(
-      candidate.command,
-      [...candidate.args, "-c", "import sys; raise SystemExit(0 if sys.version_info >= (3, 9) else 1)"],
-      { encoding: "utf8", timeout: 10_000 },
-    );
-    return !result.error && result.status === 0;
-  });
-  if (!python) {
-    throw new Error("Python 3.9 or newer is required to configure and operate the Roku toolkit.");
-  }
   requireSuccess(
     run(python.command, [...python.args, configScript]),
     "Configuring the Roku development device",

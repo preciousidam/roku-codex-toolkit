@@ -27,6 +27,21 @@ npm run setup
 
 `npm run setup` registers this repository as the `roku-codex-toolkit` marketplace, installs both plugins, and optionally prompts for device configuration. Use `npm run setup -- --skip-config` to install without configuring a Roku.
 
+## Install with npm (preview)
+
+The npm distribution is under development and has not been published. Once released, the intended workflow is:
+
+```sh
+npx roku-codex-toolkit doctor
+npx roku-codex-toolkit setup
+```
+
+Python 3.9+ remains an external requirement; the npm package does not bundle Python. `setup` performs its Node, Python, and Codex preflight before changing Codex configuration. Use `--skip-config` to install the plugins without prompting for a Roku target.
+
+To upgrade, run the setup command with the desired npm version. To remove the distribution, uninstall the npm package and remove the installed plugins or marketplace with the Codex CLI. Existing Roku configuration is intentionally retained so uninstalling cannot silently delete user data.
+
+Installing from the GitHub marketplace remains supported and canonical. No package is published, tagged, or promoted automatically by repository changes.
+
 Device configuration is stored at `~/.config/roku-device-toolkit/config.json`. On macOS, the developer password is stored in Keychain. Linux and Windows users should provide `ROKU_DEV_PASSWORD` only to the process that needs developer-mode access.
 
 ## Validate
