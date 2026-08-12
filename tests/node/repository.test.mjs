@@ -4,7 +4,11 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { quoteWindowsCommandArg, requireSupportedNode } from "../../scripts/runtime-support.mjs";
+import {
+  buildWindowsCommandLine,
+  quoteWindowsCommandArg,
+  requireSupportedNode,
+} from "../../scripts/runtime-support.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const pluginRoots = ["roku-device-toolkit", "roku-engineering"].map((name) => path.join(root, "plugins", name));
@@ -70,4 +74,12 @@ test("Windows shim arguments are quoted as one literal command", () => {
   assert.equal(quoteWindowsCommandArg("C:\\work & tools\\plugin"), '"C:\\work & tools\\plugin"');
   assert.equal(quoteWindowsCommandArg("100% ready"), '"100%% ready"');
   assert.equal(quoteWindowsCommandArg('say "hello"'), '"say \\"hello\\""');
+  assert.equal(
+    buildWindowsCommandLine("git", ["--version"]),
+    '\"\"git\" \"--version\"\"',
+  );
+  assert.equal(
+    buildWindowsCommandLine("C:\\work & tools\\codex.cmd", ["plugin", "100% ready"]),
+    '\"\"C:\\work & tools\\codex.cmd\" \"plugin\" \"100%% ready\"\"',
+  );
 });

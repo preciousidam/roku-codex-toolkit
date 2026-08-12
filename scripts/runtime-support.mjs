@@ -19,10 +19,18 @@ export function quoteWindowsCommandArg(value) {
   return `"${escaped}"`;
 }
 
+export function buildWindowsCommandLine(command, args) {
+  const invocation = [command, ...args].map(quoteWindowsCommandArg).join(" ");
+  // cmd.exe /s strips the first and last quote. Keep those separate from the
+  // quotes protecting each executable/argument so paths and metacharacters
+  // remain literal after that stripping.
+  return `"${invocation}"`;
+}
+
 export function commandStatus(command, args, options = {}) {
   const useWindowsShim = process.platform === "win32" && options.windowsShim;
   const executable = useWindowsShim ? (process.env.ComSpec || "cmd.exe") : command;
-  const commandLine = [command, ...args].map(quoteWindowsCommandArg).join(" ");
+  const commandLine = buildWindowsCommandLine(command, args);
   const executableArgs = useWindowsShim ? ["/d", "/s", "/c", commandLine] : args;
   const { windowsShim: _windowsShim, ...spawnOptions } = options;
   return spawnSync(executable, executableArgs, {
