@@ -57,6 +57,7 @@ try {
     path.join(packRoot, "plugins", "roku-device-toolkit", "mcp", "evidence", "private.log"),
     path.join(packRoot, "plugins", "roku-device-toolkit", "config.json"),
     path.join(packRoot, "plugins", "roku-device-toolkit", "private-target.json"),
+    path.join(packRoot, "plugins", "roku-device-toolkit", "secret-target.conf"),
     path.join(packRoot, "plugins", "roku-device-toolkit", "roku-screenshot.jpg"),
     path.join(packRoot, "plugins", "roku-device-toolkit", "captured-screen.png"),
   ]) {
@@ -69,6 +70,8 @@ try {
     { cwd: packRoot },
   ).stdout)[0];
   const names = new Set(packed.files.map((file) => file.path.replaceAll("\\", "/")));
+  const packageMetadata = JSON.parse(fs.readFileSync(path.join(packRoot, "package.json"), "utf8"));
+  const allowedPluginFiles = new Set(packageMetadata.files.filter((name) => name.startsWith("plugins/")));
   for (const required of [
     "package.json",
     "bin/roku-codex-toolkit.mjs",
@@ -80,6 +83,9 @@ try {
     if (!names.has(required)) throw new Error(`Packed tarball is missing ${required}`);
   }
   for (const name of names) {
+    if (name.startsWith("plugins/") && !allowedPluginFiles.has(name)) {
+      throw new Error(`Plugin file is outside the explicit package inventory: ${name}`);
+    }
     if (/^(tests|\.github|docs)\//.test(name) || /(^|\/)(__pycache__|node_modules|evidence|artifacts)(\/|$)/.test(name)) {
       throw new Error(`Development-only path leaked into tarball: ${name}`);
     }

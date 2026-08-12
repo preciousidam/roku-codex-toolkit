@@ -53,7 +53,20 @@ test("npm metadata exposes a side-effect-free public CLI package", () => {
   assert.equal(metadata.publishConfig.access, "public");
   assert.equal(metadata.publishConfig.provenance, true);
   assert.equal(metadata.scripts.postinstall, undefined);
-  assert.ok(metadata.files.includes("plugins/"));
+  assert.ok(!metadata.files.includes("plugins/"));
+  assert.ok(metadata.files.every((name) => name !== "plugins/"));
+  for (const pluginRoot of pluginRoots) {
+    const expected = [];
+    const visit = (directory) => {
+      for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+        const file = path.join(directory, entry.name);
+        if (entry.isDirectory()) visit(file);
+        else expected.push(path.relative(root, file).replaceAll(path.sep, "/"));
+      }
+    };
+    visit(pluginRoot);
+    for (const file of expected) assert.ok(metadata.files.includes(file), `package inventory omits ${file}`);
+  }
   assert.ok(!metadata.files.includes("tests/"));
   for (const pluginRoot of pluginRoots) {
     assert.equal(readJson(path.join(pluginRoot, ".codex-plugin/plugin.json")).version, metadata.version);
