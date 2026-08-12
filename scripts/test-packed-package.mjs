@@ -55,6 +55,7 @@ try {
   for (const fixture of [
     path.join(packRoot, "plugins", "roku-device-toolkit", "mcp", "__pycache__", "secret.pyc"),
     path.join(packRoot, "plugins", "roku-device-toolkit", "mcp", "evidence", "private.log"),
+    path.join(packRoot, "plugins", "roku-device-toolkit", "config.json"),
   ]) {
     fs.mkdirSync(path.dirname(fixture), { recursive: true });
     fs.writeFileSync(fixture, "must not ship");
@@ -78,7 +79,9 @@ try {
     if (/^(tests|\.github|docs)\//.test(name) || /(^|\/)(__pycache__|node_modules|evidence|artifacts)(\/|$)/.test(name)) {
       throw new Error(`Development-only path leaked into tarball: ${name}`);
     }
-    if (/\.(?:log|pyc)$/.test(name)) throw new Error(`Unsafe artifact leaked into tarball: ${name}`);
+    if (/\.(?:log|pyc)$/.test(name) || /(^|\/)config\.json$/.test(name)) {
+      throw new Error(`Unsafe artifact leaked into tarball: ${name}`);
+    }
   }
 
   const prefix = path.join(temporary, "install");
@@ -97,7 +100,7 @@ try {
   const fakeScript = path.join(fakeBin, "fake-codex.mjs");
   const fakeGitScript = path.join(fakeBin, "fake-git.mjs");
   const commandLog = path.join(temporary, "codex-commands.jsonl");
-  fs.writeFileSync(fakeScript, `import fs from "node:fs";\nconst args = process.argv.slice(2);\nfs.appendFileSync(process.env.FAKE_CODEX_LOG, JSON.stringify(args) + "\\n");\nif (args[0] === "--version") console.log("codex-test");\nif (args.join(" ") === "plugin marketplace list --json") {\n  const marketplaces = process.env.FAKE_EXISTING === "1" ? [{name: "roku-codex-toolkit", marketplaceSource: {sourceType: "local", source: "/previous"}}] : [];\n  console.log(JSON.stringify({marketplaces}));\n}\nif (process.env.FAIL_REMOTE === "1" && args[0] === "plugin" && args[1] === "marketplace" && args[2] === "add" && args[3] === "preciousidam/roku-codex-toolkit") process.exit(1);\n`);
+  fs.writeFileSync(fakeScript, `import fs from "node:fs";\nconst args = process.argv.slice(2);\nfs.appendFileSync(process.env.FAKE_CODEX_LOG, JSON.stringify(args) + "\\n");\nif (args[0] === "--version") console.log("codex-test");\nif (args.join(" ") === "plugin marketplace list --json") {\n  if (process.env.FAIL_LIST === "1") process.exit(1);\n  const marketplaces = process.env.FAKE_EXISTING === "1" ? [{name: "roku-codex-toolkit", marketplaceSource: {sourceType: "local", source: "/previous"}}] : [];\n  console.log(JSON.stringify({marketplaces}));\n}\nif (process.env.FAIL_REMOTE === "1" && args[0] === "plugin" && args[1] === "marketplace" && args[2] === "add" && args[3] === "preciousidam/roku-codex-toolkit") process.exit(1);\n`);
   fs.writeFileSync(fakeGitScript, "process.exit(0);\n");
   if (process.platform === "win32") {
     fs.writeFileSync(path.join(fakeBin, "codex.cmd"), `@echo off\r\n"${process.execPath}" "${fakeScript}" %*\r\n`);
@@ -157,6 +160,16 @@ try {
   const rollbackCalls = fs.readFileSync(commandLog, "utf8").trim().split(/\r?\n/).map(JSON.parse);
   if (!rollbackCalls.some((args) => args.join(" ") === "plugin marketplace add /previous")) {
     throw new Error("Failed marketplace replacement did not restore the previous source.");
+  }
+
+  fs.writeFileSync(commandLog, "");
+  run(process.execPath, [cli, "setup", "--skip-config"], {
+    cwd: temporary,
+    env: { ...fakeEnvironment, FAIL_LIST: "1" },
+  });
+  const staleCalls = fs.readFileSync(commandLog, "utf8").trim().split(/\r?\n/).map(JSON.parse);
+  if (!staleCalls.some((args) => args.join(" ") === "plugin marketplace remove roku-codex-toolkit")) {
+    throw new Error("A failed marketplace listing did not trigger stale-source repair.");
   }
 
   fs.writeFileSync(commandLog, "");

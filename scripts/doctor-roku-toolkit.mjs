@@ -16,6 +16,7 @@ checks.push({
   ok: Boolean(python),
   detail: python ? [python.command, ...python.args].join(" ") : "not found",
 });
+checks.push({ name: "Git", ok: commandAvailable("git"), detail: "git" });
 if (!process.argv.includes("--no-codex")) {
   checks.push({ name: "Codex CLI", ok: commandAvailable("codex"), detail: "codex" });
 }
