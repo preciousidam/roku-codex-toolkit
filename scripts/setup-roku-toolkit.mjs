@@ -58,6 +58,15 @@ if (marketplaces.status === 0) {
   run("codex", ["plugin", "marketplace", "remove", marketplaceName]);
 }
 const existingMarketplace = marketplaceEntries.find((entry) => entry.name === marketplaceName);
+let previouslyInstalledPlugins = [];
+if (existingMarketplace) {
+  const plugins = run("codex", ["plugin", "list", "--json"], { capture: true });
+  requireSuccess(plugins, "Inspecting installed Roku Codex Toolkit plugins");
+  const installed = JSON.parse(plugins.stdout).installed ?? [];
+  previouslyInstalledPlugins = pluginNames.filter((pluginName) => installed.some(
+    (entry) => entry.name === pluginName && entry.marketplaceName === marketplaceName && entry.installed === true,
+  ));
+}
 const desiredSource = sourceCheckout ? repoRoot : marketplaceSource;
 const desiredArgs = sourceCheckout
   ? ["plugin", "marketplace", "add", desiredSource]
@@ -70,7 +79,7 @@ function restorePreviousMarketplace() {
   const restoreArgs = ["plugin", "marketplace", "add", previous.source];
   if (previous.ref) restoreArgs.push("--ref", previous.ref);
   requireSuccess(run("codex", restoreArgs), "Restoring the previous Roku Codex Toolkit marketplace");
-  for (const pluginName of pluginNames) {
+  for (const pluginName of previouslyInstalledPlugins) {
     requireSuccess(
       run("codex", ["plugin", "add", `${pluginName}@${marketplaceName}`]),
       `Restoring ${pluginName}`,

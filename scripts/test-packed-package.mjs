@@ -118,7 +118,7 @@ try {
   const fakeScript = path.join(fakeBin, "fake-codex.mjs");
   const fakeGitScript = path.join(fakeBin, "fake-git.mjs");
   const commandLog = path.join(temporary, "codex-commands.jsonl");
-  fs.writeFileSync(fakeScript, `import fs from "node:fs";\nconst args = process.argv.slice(2);\nfs.appendFileSync(process.env.FAKE_CODEX_LOG, JSON.stringify(args) + "\\n");\nif (args[0] === "--version" || args.join(" ") === "plugin marketplace --help") console.log("codex-test");\nif (args.join(" ") === "plugin marketplace list --json") {\n  if (process.env.FAIL_LIST === "1") process.exit(1);\n  const marketplaces = process.env.FAKE_EXISTING === "1" ? [{name: "roku-codex-toolkit", marketplaceSource: {sourceType: "local", source: "/previous"}}] : [];\n  console.log(JSON.stringify({marketplaces}));\n}\nif (process.env.FAIL_REMOTE === "1" && args[0] === "plugin" && args[1] === "marketplace" && args[2] === "add" && args[3] === "preciousidam/roku-codex-toolkit") process.exit(1);\nif (process.env.FAIL_SECOND_PLUGIN && args.join(" ") === "plugin add roku-engineering@roku-codex-toolkit" && !fs.existsSync(process.env.FAIL_SECOND_PLUGIN)) {\n  fs.writeFileSync(process.env.FAIL_SECOND_PLUGIN, "failed once");\n  process.exit(1);\n}\n`);
+  fs.writeFileSync(fakeScript, `import fs from "node:fs";\nconst args = process.argv.slice(2);\nfs.appendFileSync(process.env.FAKE_CODEX_LOG, JSON.stringify(args) + "\\n");\nif (args[0] === "--version" || args.join(" ") === "plugin marketplace --help") console.log("codex-test");\nif (args.join(" ") === "plugin marketplace list --json") {\n  if (process.env.FAIL_LIST === "1") process.exit(1);\n  const marketplaces = process.env.FAKE_EXISTING === "1" ? [{name: "roku-codex-toolkit", marketplaceSource: {sourceType: "local", source: "/previous"}}] : [];\n  console.log(JSON.stringify({marketplaces}));\n}\nif (args.join(" ") === "plugin list --json") {\n  const names = (process.env.FAKE_INSTALLED ?? "roku-device-toolkit,roku-engineering").split(",").filter(Boolean);\n  console.log(JSON.stringify({installed: names.map((name) => ({name, marketplaceName: "roku-codex-toolkit", installed: true}))}));\n}\nif (process.env.FAIL_REMOTE === "1" && args[0] === "plugin" && args[1] === "marketplace" && args[2] === "add" && args[3] === "preciousidam/roku-codex-toolkit") process.exit(1);\nif (process.env.FAIL_SECOND_PLUGIN && args.join(" ") === "plugin add roku-engineering@roku-codex-toolkit" && !fs.existsSync(process.env.FAIL_SECOND_PLUGIN)) {\n  fs.writeFileSync(process.env.FAIL_SECOND_PLUGIN, "failed once");\n  process.exit(1);\n}\n`);
   fs.writeFileSync(fakeGitScript, "process.exit(0);\n");
   if (process.platform === "win32") {
     fs.writeFileSync(path.join(fakeBin, "codex.cmd"), `@echo off\r\n"${process.execPath}" "${fakeScript}" %*\r\n`);
@@ -185,6 +185,24 @@ try {
   }
   if (rollbackCalls.filter((args) => args[0] === "plugin" && args[1] === "add").length !== 2) {
     throw new Error("Failed marketplace replacement did not restore both plugins.");
+  }
+
+  fs.writeFileSync(commandLog, "");
+  runExpectFailure(process.execPath, [cli, "setup", "--skip-config"], {
+    cwd: temporary,
+    env: {
+      ...fakeEnvironment,
+      FAKE_EXISTING: "1",
+      FAKE_INSTALLED: "roku-device-toolkit",
+      FAIL_REMOTE: "1",
+    },
+  });
+  const partialRollbackCalls = fs.readFileSync(commandLog, "utf8").trim().split(/\r?\n/).map(JSON.parse);
+  const restoredPlugins = partialRollbackCalls
+    .filter((args) => args[0] === "plugin" && args[1] === "add")
+    .map((args) => args[2]);
+  if (restoredPlugins.length !== 1 || restoredPlugins[0] !== "roku-device-toolkit@roku-codex-toolkit") {
+    throw new Error("Marketplace rollback did not preserve the prior partial plugin installation set.");
   }
 
   fs.writeFileSync(commandLog, "");
