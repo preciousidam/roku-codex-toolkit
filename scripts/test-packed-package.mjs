@@ -124,6 +124,23 @@ try {
     throw new Error("Installed-package validation did not reject a missing MCP configuration runtime.");
   }
   fs.renameSync(hiddenConfigRuntime, configRuntime);
+  const bundledSkill = path.join(
+    installedRoot,
+    "plugins",
+    "roku-engineering",
+    "skills",
+    "roku-runtime-log-analyzer",
+    "SKILL.md",
+  );
+  const hiddenBundledSkill = `${bundledSkill}.missing`;
+  fs.renameSync(bundledSkill, hiddenBundledSkill);
+  const missingBundledSkill = runExpectFailure(process.execPath, [cli, "validate"], { cwd: temporary });
+  if (!`${missingBundledSkill.stdout}\n${missingBundledSkill.stderr}`.includes(
+    "missing plugins/roku-engineering/skills/roku-runtime-log-analyzer/SKILL.md",
+  )) {
+    throw new Error("Installed-package validation did not reject a missing bundled skill.");
+  }
+  fs.renameSync(hiddenBundledSkill, bundledSkill);
 
   const fakeBin = path.join(temporary, "bin");
   fs.mkdirSync(fakeBin);

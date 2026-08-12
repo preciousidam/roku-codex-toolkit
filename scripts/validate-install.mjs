@@ -7,25 +7,19 @@ import { requirePython, requireSupportedNode } from "./runtime-support.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 requireSupportedNode();
-const required = [
-  ".agents/plugins/marketplace.json",
-  "plugins/roku-device-toolkit/.codex-plugin/plugin.json",
-  "plugins/roku-device-toolkit/.mcp.json",
-  "plugins/roku-device-toolkit/scripts/launch-mcp.mjs",
-  "plugins/roku-device-toolkit/scripts/roku_artifacts.py",
-  "plugins/roku-device-toolkit/scripts/roku_config.py",
-  "plugins/roku-device-toolkit/mcp/server.py",
-  "plugins/roku-device-toolkit/skills/roku-device-operator/scripts/roku_device.py",
-  "plugins/roku-device-toolkit/skills/roku-flow-verifier/scripts/run_flow.py",
-  "plugins/roku-engineering/.codex-plugin/plugin.json",
-];
+const packageMetadata = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+if (!Array.isArray(packageMetadata.files) || packageMetadata.files.some((entry) => (
+  typeof entry !== "string" || entry.endsWith("/")
+))) {
+  throw new Error("Installed package has an invalid explicit file inventory.");
+}
+const required = packageMetadata.files;
 for (const relative of required) {
   if (!fs.statSync(path.join(root, relative), { throwIfNoEntry: false })?.isFile()) {
     throw new Error(`Installed package is incomplete: missing ${relative}`);
   }
 }
-const marketplace = JSON.parse(fs.readFileSync(path.join(root, required[0]), "utf8"));
-const packageMetadata = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+const marketplace = JSON.parse(fs.readFileSync(path.join(root, ".agents/plugins/marketplace.json"), "utf8"));
 if (marketplace.plugins?.length !== 2) {
   throw new Error(`Expected 2 marketplace plugins; found ${marketplace.plugins?.length ?? 0}.`);
 }
