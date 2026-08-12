@@ -66,11 +66,13 @@ test("flow schemas and examples expose stable public contracts", () => {
   for (const save of [
     "../escape.jpg", "/tmp/output.jpg", "C:\\output.jpg", "report.json",
     "./report.json", ".\\report.json", "././REPORT.JSON", ".//report.json",
-    ".\\\\REPORT.JSON", "./.", ".\\.", ".//.",
+    ".\\\\REPORT.JSON", "report.jſon", "./REPORT.JſON", "./.", ".\\.", ".//.",
     "query\u0000.xml", "screen\u0000.jpg",
     "screen?.jpg", "screen<1>.jpg", "folder|name/screen.jpg", "folder/name. ",
     "CON.jpg", "aux", "nested/PRN.xml", "nested\\LPT9.png",
     "COM¹.png", "nested/COM².jpg", "nested\\LPT³.png",
+    "CONIN$.jpg", "CONOUT$.png", "CON .txt", "nested/PRN .xml",
+    "screen\uD800.png", "nested/screen\uDFFF.jpg",
     "\u00a0",
   ]) {
     const invalid = {
@@ -94,7 +96,7 @@ test("flow schemas and examples expose stable public contracts", () => {
     const invalid = { steps: [{ action: "screenshot", save }] };
     assert.equal(validateScenario(invalid), false, save);
   }
-  for (const host of ["roku.local", "192.168.1.50", " roku.local "]) {
+  for (const host of ["roku.local", "192.168.1.50", " roku.local ", "\tdevice.local\n"]) {
     const valid = { host, steps: [{ action: "screenshot", save: "screen.png" }] };
     assertSchemaValid(validateScenario, valid, host);
   }
@@ -109,7 +111,7 @@ test("flow schemas and examples expose stable public contracts", () => {
   for (const host of [
     "", "http://roku.local", "roku.local:8060", "roku.local/path",
     "roku.local?query", "roku.local#fragment", "user@roku.local", "\u001c", "\u00a0",
-    "roku\u0000.local",
+    "roku\u0000.local", "roku local", "roku\tlocal", "roku\u0001.local",
   ]) {
     const invalid = { host, steps: [{ action: "screenshot", save: "screen.png" }] };
     assert.equal(validateScenario(invalid), false, host);
