@@ -50,13 +50,8 @@ if (!sourceCheckout) {
   requireSuccess(remote, `Finding marketplace tag v${packageVersion}`);
 }
 const marketplaces = run("codex", ["plugin", "marketplace", "list", "--json"], { capture: true });
-let marketplaceEntries = [];
-if (marketplaces.status === 0) {
-  marketplaceEntries = JSON.parse(marketplaces.stdout).marketplaces ?? [];
-} else {
-  // A stale local marketplace can make listing fail; removal by stable name still repairs it.
-  run("codex", ["plugin", "marketplace", "remove", marketplaceName]);
-}
+requireSuccess(marketplaces, "Inspecting Codex marketplaces; repair stale marketplace entries before setup");
+const marketplaceEntries = JSON.parse(marketplaces.stdout).marketplaces ?? [];
 const existingMarketplace = marketplaceEntries.find((entry) => entry.name === marketplaceName);
 let previouslyInstalledPlugins = [];
 if (existingMarketplace) {

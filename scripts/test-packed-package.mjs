@@ -231,13 +231,18 @@ try {
   }
 
   fs.writeFileSync(commandLog, "");
-  run(process.execPath, [cli, "setup", "--skip-config"], {
+  const failedListing = runExpectFailure(process.execPath, [cli, "setup", "--skip-config"], {
     cwd: temporary,
     env: { ...fakeEnvironment, FAIL_LIST: "1" },
   });
+  if (!`${failedListing.stdout}\n${failedListing.stderr}`.includes("Inspecting Codex marketplaces")) {
+    throw new Error("A failed marketplace listing did not report a safe diagnostic.");
+  }
   const staleCalls = fs.readFileSync(commandLog, "utf8").trim().split(/\r?\n/).map(JSON.parse);
-  if (!staleCalls.some((args) => args.join(" ") === "plugin marketplace remove roku-codex-toolkit")) {
-    throw new Error("A failed marketplace listing did not trigger stale-source repair.");
+  if (staleCalls.some((args) => args[0] === "plugin" && (
+    args[1] === "add" || (args[1] === "marketplace" && ["add", "remove"].includes(args[2]))
+  ))) {
+    throw new Error("A failed marketplace listing changed Codex state without a safe rollback snapshot.");
   }
 
   fs.writeFileSync(commandLog, "");
