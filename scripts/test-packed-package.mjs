@@ -56,6 +56,8 @@ try {
     path.join(packRoot, "plugins", "roku-device-toolkit", "mcp", "__pycache__", "secret.pyc"),
     path.join(packRoot, "plugins", "roku-device-toolkit", "mcp", "evidence", "private.log"),
     path.join(packRoot, "plugins", "roku-device-toolkit", "config.json"),
+    path.join(packRoot, "plugins", "roku-device-toolkit", "roku-screenshot.jpg"),
+    path.join(packRoot, "plugins", "roku-device-toolkit", "captured-screen.png"),
   ]) {
     fs.mkdirSync(path.dirname(fixture), { recursive: true });
     fs.writeFileSync(fixture, "must not ship");
@@ -79,7 +81,7 @@ try {
     if (/^(tests|\.github|docs)\//.test(name) || /(^|\/)(__pycache__|node_modules|evidence|artifacts)(\/|$)/.test(name)) {
       throw new Error(`Development-only path leaked into tarball: ${name}`);
     }
-    if (/\.(?:log|pyc)$/.test(name) || /(^|\/)config\.json$/.test(name)) {
+    if (/\.(?:log|pyc|jpe?g|png)$/i.test(name) || /(^|\/)config\.json$/.test(name)) {
       throw new Error(`Unsafe artifact leaked into tarball: ${name}`);
     }
   }

@@ -6,3 +6,6 @@
 **/.env
 **/.env.*
 **/config.json
+**/*.jpg
+**/*.jpeg
+**/*.png
