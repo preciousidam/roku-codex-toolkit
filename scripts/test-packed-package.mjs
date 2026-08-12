@@ -262,6 +262,31 @@ try {
 
   fs.writeFileSync(commandLog, "");
   fs.rmSync(pluginFailureMarker, { force: true });
+  const cleanupFailureSource = enabledFakeSource.replace(
+    "if (process.env.FAIL_REMOTE",
+    "if (process.env.FAIL_REMOVE === \"1\" && args[0] === \"plugin\" && args[1] === \"remove\") process.exit(1);\nif (process.env.FAIL_REMOTE",
+  );
+  fs.writeFileSync(fakeScript, cleanupFailureSource);
+  const cleanupFailure = runExpectFailure(process.execPath, [cli, "setup", "--skip-config"], {
+    cwd: temporary,
+    env: {
+      ...fakeEnvironment,
+      FAKE_EXISTING: "1",
+      FAIL_SECOND_PLUGIN: pluginFailureMarker,
+      FAIL_REMOVE: "1",
+    },
+  });
+  fs.writeFileSync(fakeScript, enabledFakeSource);
+  const cleanupFailureCalls = fs.readFileSync(commandLog, "utf8").trim().split(/\r?\n/).map(JSON.parse);
+  if (!cleanupFailureCalls.some((args) => args.join(" ") === "plugin marketplace add /previous")) {
+    throw new Error("A partial-plugin cleanup failure prevented marketplace restoration.");
+  }
+  if (!`${cleanupFailure.stdout}\n${cleanupFailure.stderr}`.includes("Rollback errors:")) {
+    throw new Error("A partial-plugin cleanup failure was not reported after rollback continued.");
+  }
+
+  fs.writeFileSync(commandLog, "");
+  fs.rmSync(pluginFailureMarker, { force: true });
   runExpectFailure(process.execPath, [cli, "setup", "--skip-config"], {
     cwd: temporary,
     env: { ...fakeEnvironment, FAIL_SECOND_PLUGIN: pluginFailureMarker },

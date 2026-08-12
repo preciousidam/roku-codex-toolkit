@@ -82,23 +82,44 @@ const installedThisAttempt = [];
 
 function restorePreviousMarketplace() {
   const previous = existingMarketplace?.marketplaceSource;
+  const errors = [];
+  const attempt = (description, action) => {
+    try {
+      requireSuccess(action(), description);
+    } catch (error) {
+      errors.push(`${description}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
   for (const pluginName of [...installedThisAttempt].reverse()) {
-    requireSuccess(
-      run("codex", ["plugin", "remove", `${pluginName}@${marketplaceName}`]),
+    attempt(
       `Removing partially installed ${pluginName}`,
+      () => run("codex", ["plugin", "remove", `${pluginName}@${marketplaceName}`]),
     );
   }
-  run("codex", ["plugin", "marketplace", "remove", marketplaceName]);
-  if (!previous?.source) return;
+  attempt(
+    "Removing the failed Roku Codex Toolkit marketplace",
+    () => run("codex", ["plugin", "marketplace", "remove", marketplaceName]),
+  );
+  if (!previous?.source) return errors;
   const restoreArgs = ["plugin", "marketplace", "add", previous.source];
   if (previous.ref) restoreArgs.push("--ref", previous.ref);
-  requireSuccess(run("codex", restoreArgs), "Restoring the previous Roku Codex Toolkit marketplace");
+  attempt(
+    "Restoring the previous Roku Codex Toolkit marketplace",
+    () => run("codex", restoreArgs),
+  );
   for (const plugin of previouslyInstalledPlugins) {
-    requireSuccess(
-      run("codex", ["plugin", "add", `${plugin.name}@${marketplaceName}`]),
+    attempt(
       `Restoring ${plugin.name}`,
+      () => run("codex", ["plugin", "add", `${plugin.name}@${marketplaceName}`]),
     );
   }
+  return errors;
+}
+
+function throwWithRollbackErrors(error, rollbackErrors) {
+  if (rollbackErrors.length === 0) throw error;
+  const message = error instanceof Error ? error.message : String(error);
+  throw new Error(`${message}\nRollback errors:\n- ${rollbackErrors.join("\n- ")}`, { cause: error });
 }
 
 if (existingMarketplace) {
@@ -114,9 +135,15 @@ try {
   addMarketplace = { status: null, error };
 }
 if (addMarketplace.status !== 0) {
-  restorePreviousMarketplace();
-  if (addMarketplace.error) throw addMarketplace.error;
-  requireSuccess(addMarketplace, "Adding the Roku Codex Toolkit marketplace");
+  let error = addMarketplace.error;
+  if (!error) {
+    try {
+      requireSuccess(addMarketplace, "Adding the Roku Codex Toolkit marketplace");
+    } catch (failure) {
+      error = failure;
+    }
+  }
+  throwWithRollbackErrors(error, restorePreviousMarketplace());
 }
 
 try {
@@ -128,8 +155,7 @@ try {
     installedThisAttempt.push(pluginName);
   }
 } catch (error) {
-  restorePreviousMarketplace();
-  throw error;
+  throwWithRollbackErrors(error, restorePreviousMarketplace());
 }
 
 if (!skipConfig) {
