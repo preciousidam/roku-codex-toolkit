@@ -75,7 +75,7 @@ class FlowCliTests(unittest.TestCase):
         cases = (
             {"steps": [{"action": "screenshot", "save": "../escape.jpg"}]},
             {"steps": [{"action": "query", "kind": "apps", "save": "same.txt"},
-                       {"action": "query", "kind": "active-app", "save": "same.txt"}]},
+                       {"action": "query", "kind": "active-app", "save": "./same.txt"}]},
             {"steps": [{"action": "query", "kind": "apps", "save": "report.json"}]},
         )
         for index, scenario in enumerate(cases):

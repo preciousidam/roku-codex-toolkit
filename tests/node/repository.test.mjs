@@ -49,6 +49,7 @@ test("flow schemas and examples expose stable public contracts", () => {
   const validateScenario = compileSchema(scenarioSchema);
   compileSchema(reportSchema);
   assert.equal(scenarioSchema.$schema, "https://json-schema.org/draft/2020-12/schema");
+  assert.match(scenarioSchema.$comment, /--dry-run/);
   assert.equal(reportSchema.$schema, "https://json-schema.org/draft/2020-12/schema");
   assert.deepEqual(
     new Set(scenarioSchema.$defs.query.properties.kind.enum),
