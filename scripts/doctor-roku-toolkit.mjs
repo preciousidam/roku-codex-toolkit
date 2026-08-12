@@ -20,8 +20,8 @@ checks.push({ name: "Git", ok: commandAvailable("git"), detail: "git" });
 if (!process.argv.includes("--no-codex")) {
   checks.push({
     name: "Codex plugin support",
-    ok: commandAvailable("codex", ["plugin", "marketplace", "list", "--json"]),
-    detail: "codex plugin marketplace list --json",
+    ok: commandAvailable("codex", ["plugin", "marketplace", "--help"]),
+    detail: "codex plugin marketplace --help",
   });
 }
 for (const check of checks) console.log(`${check.ok ? "ok" : "not ok"} - ${check.name} (${check.detail})`);

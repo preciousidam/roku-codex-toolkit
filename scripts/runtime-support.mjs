@@ -4,6 +4,13 @@ export const pythonCandidates = process.platform === "win32"
   ? [{ command: "py", args: ["-3"] }, { command: "python", args: [] }, { command: "python3", args: [] }]
   : [{ command: "python3", args: [] }, { command: "python", args: [] }, { command: "py", args: ["-3"] }];
 
+export function requireSupportedNode() {
+  const major = Number(process.versions.node.split(".")[0]);
+  if (!Number.isInteger(major) || major < 18) {
+    throw new Error(`Node.js 18 or newer is required; found ${process.version}.`);
+  }
+}
+
 export function commandStatus(command, args, options = {}) {
   const useWindowsShim = process.platform === "win32" && options.windowsShim;
   const executable = useWindowsShim ? (process.env.ComSpec || "cmd.exe") : command;

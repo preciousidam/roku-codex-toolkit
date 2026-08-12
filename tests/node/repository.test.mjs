@@ -4,6 +4,8 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { requireSupportedNode } from "../../scripts/runtime-support.mjs";
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const pluginRoots = ["roku-device-toolkit", "roku-engineering"].map((name) => path.join(root, "plugins", name));
 const readJson = (file) => JSON.parse(fs.readFileSync(file, "utf8"));
@@ -51,5 +53,15 @@ test("npm metadata exposes a side-effect-free public CLI package", () => {
   assert.ok(!metadata.files.includes("tests/"));
   for (const pluginRoot of pluginRoots) {
     assert.equal(readJson(path.join(pluginRoot, ".codex-plugin/plugin.json")).version, metadata.version);
+  }
+});
+
+test("setup runtime rejects unsupported Node versions", () => {
+  const original = process.versions.node;
+  Object.defineProperty(process.versions, "node", { configurable: true, value: "17.9.1" });
+  try {
+    assert.throws(() => requireSupportedNode(), /Node\.js 18 or newer/);
+  } finally {
+    Object.defineProperty(process.versions, "node", { configurable: true, value: original });
   }
 });

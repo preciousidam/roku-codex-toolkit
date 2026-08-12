@@ -4,7 +4,7 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import process from "node:process";
-import { commandStatus, requirePython } from "./runtime-support.mjs";
+import { commandStatus, requirePython, requireSupportedNode } from "./runtime-support.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const marketplaceName = "roku-codex-toolkit";
@@ -39,6 +39,7 @@ function requireSuccess(result, description) {
 }
 
 // Finish runtime preflight before changing Codex marketplace or plugin state.
+requireSupportedNode();
 const python = requirePython();
 if (!sourceCheckout) {
   const remote = run(
@@ -68,7 +69,12 @@ if (existingMarketplace) {
     "Removing the existing Roku Codex Toolkit marketplace",
   );
 }
-const addMarketplace = run("codex", desiredArgs);
+let addMarketplace;
+try {
+  addMarketplace = run("codex", desiredArgs);
+} catch (error) {
+  addMarketplace = { status: null, error };
+}
 if (addMarketplace.status !== 0) {
   const previous = existingMarketplace?.marketplaceSource;
   if (previous?.source) {
@@ -82,6 +88,7 @@ if (addMarketplace.status !== 0) {
       );
     }
   }
+  if (addMarketplace.error) throw addMarketplace.error;
   requireSuccess(addMarketplace, "Adding the Roku Codex Toolkit marketplace");
 }
 
