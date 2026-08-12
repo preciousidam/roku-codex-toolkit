@@ -39,12 +39,21 @@
   },
   "$defs": {
     "nonBlankString": {
+      "allOf": [
+        { "$ref": "#/$defs/nulFreeString" },
+        {
+          "type": "string",
+          "pattern": "[^\\u0009-\\u000D\\u001C-\\u0020\\u0085\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000]"
+        }
+      ]
+    },
+    "nulFreeString": {
       "type": "string",
-      "pattern": "[^\\u0009-\\u000D\\u001C-\\u0020\\u0085\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000]"
+      "pattern": "^[^\\u0000]*$"
     },
     "bareHost": {
       "type": "string",
-      "pattern": "^(?=.*[^\\u0009-\\u000D\\u001C-\\u0020\\u0085\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000])[^:/?#@]+$",
+      "pattern": "^(?=.*[^\\u0009-\\u000D\\u001C-\\u0020\\u0085\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000])[^\\u0000:/?#@]+$",
       "description": "A bare IP address or hostname without a scheme, port, path, query, fragment, or user information."
     },
     "artifactPath": {
@@ -89,8 +98,12 @@
       "properties": {
         "action": { "const": "launch" },
         "channel_id": { "$ref": "#/$defs/nonBlankString" },
-        "content_id": { "type": ["string", "null"] },
-        "media_type": { "type": ["string", "null"] }
+        "content_id": {
+          "anyOf": [{ "$ref": "#/$defs/nulFreeString" }, { "type": "null" }]
+        },
+        "media_type": {
+          "anyOf": [{ "$ref": "#/$defs/nulFreeString" }, { "type": "null" }]
+        }
       }
     },
     "press": {
@@ -113,7 +126,7 @@
       "required": ["action", "value"],
       "properties": {
         "action": { "const": "text" },
-        "value": { "type": "string" },
+        "value": { "$ref": "#/$defs/nulFreeString" },
         "delay": { "type": "number", "minimum": 0, "maximum": 10, "default": 0.05 }
       }
     },

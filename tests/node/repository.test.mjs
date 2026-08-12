@@ -105,6 +105,7 @@ test("flow schemas and examples expose stable public contracts", () => {
   for (const host of [
     "", "http://roku.local", "roku.local:8060", "roku.local/path",
     "roku.local?query", "roku.local#fragment", "user@roku.local", "\u001c", "\u00a0",
+    "roku\u0000.local",
   ]) {
     const invalid = { host, steps: [{ action: "screenshot", save: "screen.png" }] };
     assert.equal(validateScenario(invalid), false, host);
@@ -114,6 +115,11 @@ test("flow schemas and examples expose stable public contracts", () => {
     { steps: [{ action: "query", kind: "active-app", contains: "\u001d" }] },
     { steps: [{ action: "launch", channel_id: "\u001e" }, { action: "screenshot", save: "screen.png" }] },
     { steps: [{ action: "press", keys: ["\u001f"] }, { action: "screenshot", save: "screen.png" }] },
+    { steps: [{ action: "launch", channel_id: "dev\u0000" }, { action: "screenshot", save: "screen.png" }] },
+    { steps: [{ action: "press", keys: ["Home\u0000"] }, { action: "screenshot", save: "screen.png" }] },
+    { steps: [{ action: "text", value: "hello\u0000" }, { action: "screenshot", save: "screen.png" }] },
+    { steps: [{ action: "launch", channel_id: "dev", content_id: "item\u0000" }, { action: "screenshot", save: "screen.png" }] },
+    { steps: [{ action: "launch", channel_id: "dev", media_type: "movie\u0000" }, { action: "screenshot", save: "screen.png" }] },
   ]) {
     assert.equal(validateScenario(invalid), false, JSON.stringify(invalid));
   }
