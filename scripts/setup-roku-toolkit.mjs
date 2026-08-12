@@ -63,6 +63,21 @@ const desiredArgs = sourceCheckout
   ? ["plugin", "marketplace", "add", desiredSource]
   : ["plugin", "marketplace", "add", desiredSource, "--ref", `v${packageVersion}`];
 
+function restorePreviousMarketplace() {
+  const previous = existingMarketplace?.marketplaceSource;
+  if (!previous?.source) return;
+  run("codex", ["plugin", "marketplace", "remove", marketplaceName]);
+  const restoreArgs = ["plugin", "marketplace", "add", previous.source];
+  if (previous.ref) restoreArgs.push("--ref", previous.ref);
+  requireSuccess(run("codex", restoreArgs), "Restoring the previous Roku Codex Toolkit marketplace");
+  for (const pluginName of pluginNames) {
+    requireSuccess(
+      run("codex", ["plugin", "add", `${pluginName}@${marketplaceName}`]),
+      `Restoring ${pluginName}`,
+    );
+  }
+}
+
 if (existingMarketplace) {
   requireSuccess(
     run("codex", ["plugin", "marketplace", "remove", marketplaceName]),
@@ -76,27 +91,21 @@ try {
   addMarketplace = { status: null, error };
 }
 if (addMarketplace.status !== 0) {
-  const previous = existingMarketplace?.marketplaceSource;
-  if (previous?.source) {
-    const restoreArgs = ["plugin", "marketplace", "add", previous.source];
-    if (previous.ref) restoreArgs.push("--ref", previous.ref);
-    requireSuccess(run("codex", restoreArgs), "Restoring the previous Roku Codex Toolkit marketplace");
-    for (const pluginName of pluginNames) {
-      requireSuccess(
-        run("codex", ["plugin", "add", `${pluginName}@${marketplaceName}`]),
-        `Restoring ${pluginName}`,
-      );
-    }
-  }
+  restorePreviousMarketplace();
   if (addMarketplace.error) throw addMarketplace.error;
   requireSuccess(addMarketplace, "Adding the Roku Codex Toolkit marketplace");
 }
 
-for (const pluginName of pluginNames) {
-  requireSuccess(
-    run("codex", ["plugin", "add", `${pluginName}@${marketplaceName}`]),
-    `Installing ${pluginName}`,
-  );
+try {
+  for (const pluginName of pluginNames) {
+    requireSuccess(
+      run("codex", ["plugin", "add", `${pluginName}@${marketplaceName}`]),
+      `Installing ${pluginName}`,
+    );
+  }
+} catch (error) {
+  restorePreviousMarketplace();
+  throw error;
 }
 
 if (!skipConfig) {
