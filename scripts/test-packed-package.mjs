@@ -166,6 +166,16 @@ try {
   };
   run(process.execPath, [cli, "doctor"], { cwd: temporary, env: fakeEnvironment });
   fs.rmSync(commandLog, { force: true });
+  const doctorHelp = run(process.execPath, [cli, "doctor", "-h"], {
+    cwd: temporary,
+    env: { ...packageTestEnv, PATH: fakeBin, FAKE_CODEX_LOG: commandLog },
+  });
+  if (!doctorHelp.stdout.includes("Usage: roku-codex-toolkit doctor")) {
+    throw new Error("doctor -h did not display subcommand usage.");
+  }
+  if (fs.existsSync(commandLog)) {
+    throw new Error("doctor -h inspected dependencies instead of exiting after help.");
+  }
   run(process.execPath, [cli, "setup", "-h"], { cwd: temporary, env: fakeEnvironment });
   if (fs.existsSync(commandLog)) {
     throw new Error("setup -h changed or inspected Codex state.");

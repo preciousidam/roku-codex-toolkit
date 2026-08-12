@@ -3,7 +3,7 @@
 import process from "node:process";
 import { commandAvailable, findPython } from "./runtime-support.mjs";
 
-if (process.argv.includes("--help")) {
+if (process.argv.includes("--help") || process.argv.includes("-h")) {
   console.log("Usage: roku-codex-toolkit doctor [--no-codex]");
   process.exit(0);
 }
