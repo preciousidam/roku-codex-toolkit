@@ -31,6 +31,11 @@
         "properties": { "passed": { "const": true } }
       },
       "then": {
+        "not": {
+          "type": "object",
+          "properties": { "verification_error": {} },
+          "required": ["verification_error"]
+        },
         "required": ["pending_visual_review"],
         "properties": {
           "dry_run": { "const": false },
@@ -120,8 +125,11 @@
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["passed"],
-              "properties": { "passed": { "const": false } }
+              "required": ["passed", "status"],
+              "properties": {
+                "passed": { "const": false },
+                "status": { "enum": ["skipped", "invalid"] }
+              }
             }
           }
         }
@@ -246,7 +254,25 @@
             "required": ["status"],
             "properties": { "status": { "const": "pending_visual_review" } }
           },
-          "then": { "properties": { "action": { "const": "screenshot" } } }
+          "then": {
+            "required": ["artifact", "capture_succeeded", "visual_review_required"],
+            "properties": {
+              "action": { "const": "screenshot" },
+              "artifact": { "type": "string" },
+              "capture_succeeded": { "const": true },
+              "visual_review_required": { "const": true }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["status"],
+            "properties": { "status": { "const": "invalid" } }
+          },
+          "then": {
+            "properties": { "error": { "type": "string" } },
+            "required": ["error"]
+          }
         },
         {
           "if": {

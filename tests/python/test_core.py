@@ -156,6 +156,15 @@ class FlowTests(unittest.TestCase):
         self.assertFalse(flow.is_verification_checkpoint({"action": "screenshot", "save": "screen.jpg"}))
         self.assertTrue(flow.is_verification_checkpoint({"action": "query", "kind": "player", "contains": "play"}))
 
+    def test_screenshot_rejects_trailing_directory_aliases(self):
+        for save in ("screen.png/", "screen.png/.", "screen.jpg\\", "screen.jpg\\."):
+            with self.subTest(save=save), self.assertRaisesRegex(ValueError, "name a file"):
+                flow.command_for(
+                    {"action": "screenshot", "save": save},
+                    "roku.local",
+                    Path("/tmp/evidence"),
+                )
+
     def test_report_indices_are_a_unique_sequence(self):
         report_validator.validate_report_semantics({"steps": [{"index": 1}, {"index": 2}]})
         for indices in ([2], [1, 1], [1, 3]):

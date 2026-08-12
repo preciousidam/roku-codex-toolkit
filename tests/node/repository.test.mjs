@@ -75,6 +75,7 @@ test("flow schemas and examples expose stable public contracts", () => {
     { ...baseReport, dry_run: true },
     { ...baseReport, verified: false },
     { ...baseReport, pending_visual_review: true },
+    { ...baseReport, verification_error: "contradiction" },
     { ...baseReport, pending_visual_review: undefined },
     { ...baseReport, steps: [{ ...baseReport.steps[0], passed: false }] },
     { ...baseReport, steps: [{ ...baseReport.steps[0], status: "failed" }] },
@@ -133,6 +134,25 @@ test("flow schemas and examples expose stable public contracts", () => {
       ...baseReport,
       passed: false,
       verified: false,
+      dry_run: true,
+      steps: [{
+        index: 1, action: "launch", checkpoint: false, passed: false,
+        status: "failed", duration_seconds: 0,
+      }],
+    },
+    {
+      ...baseReport,
+      passed: false,
+      verified: false,
+      steps: [{
+        index: 1, action: "launch", checkpoint: false, passed: false,
+        status: "invalid", duration_seconds: 0,
+      }],
+    },
+    {
+      ...baseReport,
+      passed: false,
+      verified: false,
       checkpoint_count: 0,
       screenshot_count: 0,
       pending_visual_review: true,
@@ -161,6 +181,7 @@ test("flow schemas and examples expose stable public contracts", () => {
     steps: [{
       index: 1, action: "screenshot", checkpoint: false, passed: false,
       status: "pending_visual_review", duration_seconds: 0,
+      artifact: "/tmp/screen.png", capture_succeeded: true, visual_review_required: true,
     }],
   }, "pending screenshot report");
   for (const name of fs.readdirSync(path.join(root, "examples", "flow"))) {
@@ -196,6 +217,7 @@ test("flow schemas and examples expose stable public contracts", () => {
     "screen.gif", "screen.bmp", "screen.png.tmp", "screen\u0000.jpg",
     ".jpg", ".jpeg", ".png", "..jpg", "...png",
     "captures/.png", "captures\\.jpg", "captures/..png", "captures\\...jpg",
+    "screen.png/", "screen.png/.", "screen.jpg\\", "screen.jpg\\.",
   ]) {
     const invalid = { steps: [{ action: "screenshot", save }] };
     assert.equal(validateScenario(invalid), false, save);

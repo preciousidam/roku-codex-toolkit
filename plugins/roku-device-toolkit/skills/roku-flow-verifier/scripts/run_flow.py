@@ -150,6 +150,9 @@ def command_for(step: dict, host: str, evidence: Path) -> tuple[Optional[list[st
         return base + ["text", "--delay", str(delay), "--", step["value"]], None
     if action == "screenshot":
         name = str(step.get("save", ""))
+        portable_parts = name.replace("\\", "/").split("/")
+        if portable_parts[-1] in {"", "."}:
+            raise ValueError("screenshot save must name a file, not a trailing directory alias")
         if Path(name).suffix.lower() not in {".jpg", ".jpeg", ".png"}:
             raise ValueError("screenshot save must end in .jpg, .jpeg, or .png")
         capture_path = safe_artifact(evidence, name)
