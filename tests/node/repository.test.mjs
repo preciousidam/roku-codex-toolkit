@@ -65,7 +65,8 @@ test("flow schemas and examples expose stable public contracts", () => {
   }
   for (const save of [
     "../escape.jpg", "/tmp/output.jpg", "C:\\output.jpg", "report.json",
-    "./report.json", ".\\report.json", "././REPORT.JSON", "./.", ".\\.",
+    "./report.json", ".\\report.json", "././REPORT.JSON", ".//report.json",
+    ".\\\\REPORT.JSON", "./.", ".\\.", ".//.",
     "query\u0000.xml", "screen\u0000.jpg",
     "screen?.jpg", "screen<1>.jpg", "folder|name/screen.jpg", "folder/name. ",
     "CON.jpg", "aux", "nested/PRN.xml", "nested\\LPT9.png",
@@ -80,13 +81,15 @@ test("flow schemas and examples expose stable public contracts", () => {
   for (const save of [
     "screen.jpg", "screen.JPEG", "screen.png", "screen.PNG", "./screen.png",
     "nested/screens/screen-01.png", "nested\\screens\\screen_01.jpg",
+    ".screen.png", "capture\u2028one.png", "capture\u2029one.jpg",
   ]) {
     const valid = { steps: [{ action: "screenshot", save }] };
     assertSchemaValid(validateScenario, valid, save);
   }
   for (const save of [
     "screen.gif", "screen.bmp", "screen.png.tmp", "screen\u0000.jpg",
-    ".jpg", ".jpeg", ".png", "captures/.png", "captures\\.jpg",
+    ".jpg", ".jpeg", ".png", "..jpg", "...png",
+    "captures/.png", "captures\\.jpg", "captures/..png", "captures\\...jpg",
   ]) {
     const invalid = { steps: [{ action: "screenshot", save }] };
     assert.equal(validateScenario(invalid), false, save);
