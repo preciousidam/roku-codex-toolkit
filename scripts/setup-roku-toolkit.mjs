@@ -123,10 +123,14 @@ function throwWithRollbackErrors(error, rollbackErrors) {
 }
 
 if (existingMarketplace) {
-  requireSuccess(
-    run("codex", ["plugin", "marketplace", "remove", marketplaceName]),
-    "Removing the existing Roku Codex Toolkit marketplace",
-  );
+  try {
+    requireSuccess(
+      run("codex", ["plugin", "marketplace", "remove", marketplaceName]),
+      "Removing the existing Roku Codex Toolkit marketplace",
+    );
+  } catch (error) {
+    throwWithRollbackErrors(error, restorePreviousMarketplace());
+  }
 }
 let addMarketplace;
 try {
