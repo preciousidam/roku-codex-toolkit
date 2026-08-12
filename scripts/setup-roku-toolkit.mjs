@@ -60,12 +60,7 @@ const marketplaceEntries = JSON.parse(marketplaces.stdout).marketplaces ?? [];
 const existingMarketplace = marketplaceEntries.find((entry) => entry.name === marketplaceName);
 let previouslyInstalledPlugins = [];
 if (existingMarketplace) {
-  const plugins = run("codex", ["plugin", "list", "--json"], { capture: true });
-  requireSuccess(plugins, "Inspecting installed Roku Codex Toolkit plugins");
-  const installed = JSON.parse(plugins.stdout).installed ?? [];
-  previouslyInstalledPlugins = installed.filter((entry) => (
-    pluginNames.includes(entry.name) && entry.marketplaceName === marketplaceName && entry.installed === true
-  )).map((entry) => ({ name: entry.name, enabled: entry.enabled !== false }));
+  previouslyInstalledPlugins = inspectInstalledPlugins();
   const disabled = previouslyInstalledPlugins.filter((entry) => !entry.enabled).map((entry) => entry.name);
   if (disabled.length > 0) {
     throw new Error(
@@ -79,6 +74,15 @@ const desiredArgs = sourceCheckout
   ? ["plugin", "marketplace", "add", desiredSource]
   : ["plugin", "marketplace", "add", desiredSource, "--ref", `v${packageVersion}`];
 const installedThisAttempt = [];
+
+function inspectInstalledPlugins() {
+  const plugins = run("codex", ["plugin", "list", "--json"], { capture: true });
+  requireSuccess(plugins, "Inspecting installed Roku Codex Toolkit plugins");
+  const installed = JSON.parse(plugins.stdout).installed ?? [];
+  return installed.filter((entry) => (
+    pluginNames.includes(entry.name) && entry.marketplaceName === marketplaceName && entry.installed === true
+  )).map((entry) => ({ name: entry.name, enabled: entry.enabled !== false }));
+}
 
 function restorePreviousMarketplace() {
   const previous = existingMarketplace?.marketplaceSource;
@@ -148,6 +152,18 @@ if (addMarketplace.status !== 0) {
     }
   }
   throwWithRollbackErrors(error, restorePreviousMarketplace());
+}
+
+if (!existingMarketplace) {
+  const orphanedPlugins = inspectInstalledPlugins();
+  const disabled = orphanedPlugins.filter((entry) => !entry.enabled).map((entry) => entry.name);
+  if (disabled.length > 0) {
+    const error = new Error(
+      `Setup cannot safely reinstall disabled orphaned plugins: ${disabled.join(", ")}. ` +
+      "Enable or remove them explicitly before retrying so setup does not activate them.",
+    );
+    throwWithRollbackErrors(error, restorePreviousMarketplace());
+  }
 }
 
 try {

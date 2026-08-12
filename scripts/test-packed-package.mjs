@@ -275,6 +275,24 @@ try {
   }
 
   fs.writeFileSync(commandLog, "");
+  fs.writeFileSync(fakeScript, enabledFakeSource.replace("installed: true", "installed: true, enabled: false"));
+  const orphanedDisabledSetup = runExpectFailure(process.execPath, [cli, "setup", "--skip-config"], {
+    cwd: temporary,
+    env: fakeEnvironment,
+  });
+  fs.writeFileSync(fakeScript, enabledFakeSource);
+  if (!`${orphanedDisabledSetup.stdout}\n${orphanedDisabledSetup.stderr}`.includes("disabled orphaned plugins")) {
+    throw new Error("Setup did not reject a disabled orphaned toolkit plugin.");
+  }
+  const orphanedDisabledCalls = fs.readFileSync(commandLog, "utf8").trim().split(/\r?\n/).map(JSON.parse);
+  if (!orphanedDisabledCalls.some((args) => args.join(" ") === "plugin marketplace remove roku-codex-toolkit")) {
+    throw new Error("Setup did not remove the temporary marketplace after finding a disabled orphaned plugin.");
+  }
+  if (orphanedDisabledCalls.some((args) => args[0] === "plugin" && ["add", "remove"].includes(args[1]))) {
+    throw new Error("Setup changed orphaned plugin state after finding it disabled.");
+  }
+
+  fs.writeFileSync(commandLog, "");
   runExpectFailure(process.execPath, [cli, "setup", "--skip-config"], {
     cwd: temporary,
     env: {
