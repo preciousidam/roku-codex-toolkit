@@ -12,7 +12,11 @@ const required = [
   "plugins/roku-device-toolkit/.codex-plugin/plugin.json",
   "plugins/roku-device-toolkit/.mcp.json",
   "plugins/roku-device-toolkit/scripts/launch-mcp.mjs",
+  "plugins/roku-device-toolkit/scripts/roku_artifacts.py",
+  "plugins/roku-device-toolkit/scripts/roku_config.py",
   "plugins/roku-device-toolkit/mcp/server.py",
+  "plugins/roku-device-toolkit/skills/roku-device-operator/scripts/roku_device.py",
+  "plugins/roku-device-toolkit/skills/roku-flow-verifier/scripts/run_flow.py",
   "plugins/roku-engineering/.codex-plugin/plugin.json",
 ];
 for (const relative of required) {

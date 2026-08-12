@@ -116,6 +116,14 @@ try {
     throw new Error("Installed-package validation did not reject a missing MCP launcher.");
   }
   fs.renameSync(hiddenLauncher, launcher);
+  const configRuntime = path.join(installedRoot, "plugins", "roku-device-toolkit", "scripts", "roku_config.py");
+  const hiddenConfigRuntime = `${configRuntime}.missing`;
+  fs.renameSync(configRuntime, hiddenConfigRuntime);
+  const missingConfigRuntime = runExpectFailure(process.execPath, [cli, "validate"], { cwd: temporary });
+  if (!`${missingConfigRuntime.stdout}\n${missingConfigRuntime.stderr}`.includes("missing plugins/roku-device-toolkit/scripts/roku_config.py")) {
+    throw new Error("Installed-package validation did not reject a missing MCP configuration runtime.");
+  }
+  fs.renameSync(hiddenConfigRuntime, configRuntime);
 
   const fakeBin = path.join(temporary, "bin");
   fs.mkdirSync(fakeBin);
@@ -144,6 +152,16 @@ try {
   run(process.execPath, [cli, "setup", "-h"], { cwd: temporary, env: fakeEnvironment });
   if (fs.existsSync(commandLog)) {
     throw new Error("setup -h changed or inspected Codex state.");
+  }
+  const unknownSetupOption = runExpectFailure(process.execPath, [cli, "setup", "--skip-confg"], {
+    cwd: temporary,
+    env: fakeEnvironment,
+  });
+  if (!`${unknownSetupOption.stdout}\n${unknownSetupOption.stderr}`.includes("Unknown setup option: --skip-confg")) {
+    throw new Error("Setup did not reject an unknown option with a useful diagnostic.");
+  }
+  if (fs.existsSync(commandLog)) {
+    throw new Error("Setup inspected or changed Codex state before rejecting an unknown option.");
   }
   const missingPython = runExpectFailure(process.execPath, [cli, "setup", "--skip-config"], {
     cwd: temporary,

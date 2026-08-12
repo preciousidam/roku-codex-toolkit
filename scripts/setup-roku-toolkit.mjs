@@ -13,11 +13,16 @@ const packageVersion = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.j
 const sourceCheckout = fs.existsSync(path.join(repoRoot, ".git"));
 const pluginNames = ["roku-device-toolkit", "roku-engineering"];
 const configScript = path.join(repoRoot, "plugins/roku-device-toolkit/scripts/roku_config.py");
-const skipConfig = process.argv.includes("--skip-config");
-if (process.argv.includes("--help") || process.argv.includes("-h")) {
+const setupArgs = process.argv.slice(2);
+if (setupArgs.includes("--help") || setupArgs.includes("-h")) {
   console.log("Usage: roku-codex-toolkit setup [--skip-config]");
   process.exit(0);
 }
+const unknownArgs = setupArgs.filter((argument) => argument !== "--skip-config");
+if (unknownArgs.length > 0) {
+  throw new Error(`Unknown setup option${unknownArgs.length === 1 ? "" : "s"}: ${unknownArgs.join(", ")}`);
+}
+const skipConfig = setupArgs.includes("--skip-config");
 
 function run(command, args, options = {}) {
   const result = commandStatus(command, args, {
