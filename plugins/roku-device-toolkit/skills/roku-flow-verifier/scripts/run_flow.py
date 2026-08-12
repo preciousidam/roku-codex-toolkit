@@ -42,6 +42,9 @@ def is_verification_checkpoint(step: object) -> bool:
 
 def safe_artifact(root: Path, relative: str) -> Path:
     resolved_root = root.resolve()
+    portable_parts = relative.replace("\\", "/").split("/")
+    if ".." in portable_parts:
+        raise ValueError(f"Artifact path must not contain parent-directory segments: {relative}")
     relative_path = Path(relative)
     if relative_path.parts and relative_path.parts[0].casefold() == "report.json":
         raise ValueError("report.json is reserved for the flow report.")

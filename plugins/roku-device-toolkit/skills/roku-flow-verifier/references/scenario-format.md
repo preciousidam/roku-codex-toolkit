@@ -47,6 +47,7 @@ Supported actions:
 - `pause`: accepts finite numeric seconds from 0 through 3600.
 - `screenshot`: requires a relative `save` path ending in `.jpg`, `.jpeg`, or `.png`.
 
-All saved paths must remain inside the evidence directory and must be unique after normalization.
+All saved paths must remain inside the evidence directory, must not contain `..` parent-directory
+segments, and must be unique after normalization.
 The runner writes `report.json` with timing, command status, and checkpoint results. A successful
 screenshot action proves only that an image was captured; inspect it before passing visual criteria.

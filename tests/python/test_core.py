@@ -106,7 +106,10 @@ class FlowTests(unittest.TestCase):
     def test_artifacts_cannot_escape_or_replace_report(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            for relative in ("../escape.log", "report.json", "REPORT.JSON"):
+            for relative in (
+                "../escape.log", "captures/../screen.png", "captures\\..\\screen.png",
+                "report.json", "REPORT.JSON",
+            ):
                 with self.subTest(relative=relative), self.assertRaises(ValueError):
                     flow.safe_artifact(root, relative)
 

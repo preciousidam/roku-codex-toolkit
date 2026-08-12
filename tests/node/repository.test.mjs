@@ -47,7 +47,7 @@ test("flow schemas and examples expose stable public contracts", () => {
   const scenarioSchema = readJson(path.join(references, "flow-scenario.schema.json"));
   const reportSchema = readJson(path.join(references, "flow-report.schema.json"));
   const validateScenario = compileSchema(scenarioSchema);
-  compileSchema(reportSchema);
+  const validateReport = compileSchema(reportSchema);
   assert.equal(scenarioSchema.$schema, "https://json-schema.org/draft/2020-12/schema");
   assert.match(scenarioSchema.$comment, /--dry-run/);
   assert.equal(reportSchema.$schema, "https://json-schema.org/draft/2020-12/schema");
@@ -61,6 +61,27 @@ test("flow schemas and examples expose stable public contracts", () => {
   );
   assert.ok(reportSchema.$defs.stepResult.required.includes("action"));
   assert.ok(reportSchema.$defs.stepResult.required.includes("checkpoint"));
+  const baseReport = {
+    name: "flow", host: "roku.local", dry_run: false, verified: true,
+    checkpoint_count: 1, screenshot_count: 0, pending_visual_review: false,
+    passed: true,
+    steps: [{
+      index: 1, action: "query", checkpoint: true, passed: true,
+      status: "passed", duration_seconds: 0,
+    }],
+  };
+  assertSchemaValid(validateReport, baseReport, "consistent passed report");
+  for (const invalid of [
+    { ...baseReport, dry_run: true },
+    { ...baseReport, verified: false },
+    { ...baseReport, pending_visual_review: true },
+    { ...baseReport, pending_visual_review: undefined },
+    { ...baseReport, steps: [{ ...baseReport.steps[0], passed: false }] },
+    { ...baseReport, steps: [{ ...baseReport.steps[0], status: "failed" }] },
+  ]) {
+    if (invalid.pending_visual_review === undefined) delete invalid.pending_visual_review;
+    assert.equal(validateReport(invalid), false, JSON.stringify(invalid));
+  }
   for (const name of fs.readdirSync(path.join(root, "examples", "flow"))) {
     const example = readJson(path.join(root, "examples", "flow", name));
     assertSchemaValid(validateScenario, example, name);

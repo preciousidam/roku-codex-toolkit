@@ -23,6 +23,22 @@
     },
     "verification_error": { "type": "string" }
   },
+  "allOf": [
+    {
+      "if": {
+        "required": ["passed"],
+        "properties": { "passed": { "const": true } }
+      },
+      "then": {
+        "required": ["pending_visual_review"],
+        "properties": {
+          "dry_run": { "const": false },
+          "verified": { "const": true },
+          "pending_visual_review": { "const": false }
+        }
+      }
+    }
+  ],
   "$defs": {
     "stepResult": {
       "type": "object",
@@ -46,7 +62,23 @@
         "capture_succeeded": { "type": "boolean" },
         "visual_review_required": { "type": "boolean" },
         "error": { "type": "string" }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["passed"],
+            "properties": { "passed": { "const": true } }
+          },
+          "then": { "properties": { "status": { "const": "passed" } } }
+        },
+        {
+          "if": {
+            "required": ["status"],
+            "properties": { "status": { "const": "passed" } }
+          },
+          "then": { "properties": { "passed": { "const": true } } }
+        }
+      ]
     }
   }
 }
