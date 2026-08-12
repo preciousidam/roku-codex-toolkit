@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   buildWindowsCommandLine,
+  commandStatus,
   quoteWindowsCommandArg,
   requireSupportedNode,
 } from "../../scripts/runtime-support.mjs";
@@ -87,7 +88,7 @@ test("setup runtime rejects unsupported Node versions", () => {
 
 test("Windows shim arguments are quoted as one literal command", () => {
   assert.equal(quoteWindowsCommandArg("C:\\work & tools\\plugin"), '"C:\\work & tools\\plugin"');
-  assert.equal(quoteWindowsCommandArg("100% ready"), '"100%% ready"');
+  assert.equal(quoteWindowsCommandArg("100% ready"), '"100% ready"');
   assert.equal(quoteWindowsCommandArg('say "hello"'), '"say \\"hello\\""');
   assert.equal(
     buildWindowsCommandLine("git", ["--version"]),
@@ -95,6 +96,21 @@ test("Windows shim arguments are quoted as one literal command", () => {
   );
   assert.equal(
     buildWindowsCommandLine("C:\\work & tools\\codex.cmd", ["plugin", "100% ready"]),
-    '\"\"C:\\work & tools\\codex.cmd\" \"plugin\" \"100%% ready\"\"',
+    '\"\"C:\\work & tools\\codex.cmd\" \"plugin\" \"100% ready\"\"',
   );
+});
+
+test("Windows shim execution preserves literal percent signs", { skip: process.platform !== "win32" }, () => {
+  const temporary = fs.mkdtempSync(path.join(process.env.RUNNER_TEMP ?? process.cwd(), "roku-100%-"));
+  try {
+    const recorder = path.join(temporary, "record-args.mjs");
+    const shim = path.join(temporary, "record.cmd");
+    fs.writeFileSync(recorder, "console.log(JSON.stringify(process.argv.slice(2)));\n");
+    fs.writeFileSync(shim, `@echo off\r\n"${process.execPath}" "${recorder}" %*\r\n`);
+    const result = commandStatus(shim, ["100% ready"], { windowsShim: true });
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout.trim()), ["100% ready"]);
+  } finally {
+    fs.rmSync(temporary, { recursive: true, force: true });
+  }
 });

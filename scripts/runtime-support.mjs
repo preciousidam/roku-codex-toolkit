@@ -13,7 +13,6 @@ export function requireSupportedNode() {
 
 export function quoteWindowsCommandArg(value) {
   const escaped = String(value)
-    .replaceAll("%", "%%")
     .replace(/(\\*)"/g, "$1$1\\\"")
     .replace(/(\\+)$/g, "$1$1");
   return `"${escaped}"`;
