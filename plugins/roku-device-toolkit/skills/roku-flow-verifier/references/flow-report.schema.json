@@ -52,19 +52,42 @@
         "properties": { "verified": { "const": true } }
       },
       "then": {
+        "properties": { "dry_run": { "const": false } },
+        "allOf": [
+          {
+            "properties": {
+              "steps": {
+                "type": "array",
+                "contains": {
+                  "type": "object",
+                  "required": ["checkpoint", "passed"],
+                  "properties": {
+                    "checkpoint": { "const": true },
+                    "passed": { "const": true }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
         "properties": {
           "steps": {
             "type": "array",
             "contains": {
               "type": "object",
-              "required": ["checkpoint", "passed"],
-              "properties": {
-                "checkpoint": { "const": true },
-                "passed": { "const": true }
-              }
+              "required": ["status"],
+              "properties": { "status": { "const": "pending_visual_review" } }
             }
           }
         }
+      },
+      "then": {
+        "required": ["pending_visual_review"],
+        "properties": { "pending_visual_review": { "const": true } }
       }
     }
   ],
@@ -106,6 +129,26 @@
             "properties": { "status": { "const": "passed" } }
           },
           "then": { "properties": { "passed": { "const": true } } }
+        },
+        {
+          "if": {
+            "required": ["checkpoint"],
+            "properties": { "checkpoint": { "const": true } }
+          },
+          "then": { "properties": { "action": { "const": "query" } } }
+        },
+        {
+          "if": {
+            "required": ["action"],
+            "properties": { "action": { "const": "screenshot" } }
+          },
+          "then": {
+            "properties": {
+              "checkpoint": { "const": false },
+              "passed": { "const": false },
+              "status": { "not": { "const": "passed" } }
+            }
+          }
         }
       ]
     }

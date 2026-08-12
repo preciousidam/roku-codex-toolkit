@@ -90,10 +90,39 @@ test("flow schemas and examples expose stable public contracts", () => {
       passed: false,
       steps: [{ ...baseReport.steps[0], checkpoint: false, passed: false, status: "failed" }],
     },
+    { ...baseReport, passed: false, dry_run: true },
+    {
+      ...baseReport,
+      passed: false,
+      pending_visual_review: false,
+      steps: [{
+        index: 1, action: "screenshot", checkpoint: false, passed: false,
+        status: "pending_visual_review", duration_seconds: 0,
+      }],
+    },
+    {
+      ...baseReport,
+      steps: [{ ...baseReport.steps[0], action: "screenshot" }],
+    },
+    {
+      ...baseReport,
+      steps: [{ ...baseReport.steps[0], action: "screenshot", checkpoint: false }],
+    },
   ]) {
     if (invalid.pending_visual_review === undefined) delete invalid.pending_visual_review;
     assert.equal(validateReport(invalid), false, JSON.stringify(invalid));
   }
+  assertSchemaValid(validateReport, {
+    ...baseReport,
+    passed: false,
+    verified: false,
+    screenshot_count: 1,
+    pending_visual_review: true,
+    steps: [{
+      index: 1, action: "screenshot", checkpoint: false, passed: false,
+      status: "pending_visual_review", duration_seconds: 0,
+    }],
+  }, "pending screenshot report");
   for (const name of fs.readdirSync(path.join(root, "examples", "flow"))) {
     const example = readJson(path.join(root, "examples", "flow", name));
     assertSchemaValid(validateScenario, example, name);
