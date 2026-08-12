@@ -117,6 +117,18 @@ class FlowTests(unittest.TestCase):
                 with self.subTest(relative=relative), self.assertRaises(ValueError):
                     flow.safe_artifact(root, relative)
 
+    def test_artifact_backslashes_are_normalized_portably(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.assertEqual(
+                flow.safe_artifact(root, "nested\\screens\\screen.png"),
+                (root / "nested" / "screens" / "screen.png").resolve(),
+            )
+            self.assertEqual(
+                flow.safe_artifact(root, "nested/screens/screen.png"),
+                flow.safe_artifact(root, "nested\\screens\\screen.png"),
+            )
+
     def test_flow_schema_enums_match_runtime_contract(self):
         references = ROOT / "plugins/roku-device-toolkit/skills/roku-flow-verifier/references"
         scenario = json.loads((references / "flow-scenario.schema.json").read_text())

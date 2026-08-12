@@ -67,7 +67,7 @@ test("flow schemas and examples expose stable public contracts", () => {
     passed: true,
     steps: [{
       index: 1, action: "query", checkpoint: true, passed: true,
-      status: "passed", duration_seconds: 0,
+      status: "passed", return_code: 0, duration_seconds: 0,
     }],
   };
   assertSchemaValid(validateReport, baseReport, "consistent passed report");
@@ -76,6 +76,8 @@ test("flow schemas and examples expose stable public contracts", () => {
     { ...baseReport, verified: false },
     { ...baseReport, pending_visual_review: true },
     { ...baseReport, verification_error: "contradiction" },
+    { ...baseReport, name: "" },
+    { ...baseReport, name: "   " },
     { ...baseReport, pending_visual_review: undefined },
     { ...baseReport, steps: [{ ...baseReport.steps[0], passed: false }] },
     { ...baseReport, steps: [{ ...baseReport.steps[0], status: "failed" }] },
@@ -113,6 +115,15 @@ test("flow schemas and examples expose stable public contracts", () => {
     { ...baseReport, passed: false, verified: false, dry_run: true },
     { ...baseReport, passed: false, verified: false, steps: [] },
     { ...baseReport, checkpoint_count: 0 },
+    {
+      ...baseReport,
+      passed: false,
+      verified: false,
+      checkpoint_count: 0,
+      verification_error: "",
+    },
+    { ...baseReport, steps: [{ ...baseReport.steps[0], return_code: 1 }] },
+    { ...baseReport, steps: [{ ...baseReport.steps[0], return_code: undefined }] },
     {
       ...baseReport,
       passed: false,
@@ -178,6 +189,7 @@ test("flow schemas and examples expose stable public contracts", () => {
     verified: false,
     screenshot_count: 1,
     pending_visual_review: true,
+    verification_error: "Captured screenshots still require visual review.",
     steps: [{
       index: 1, action: "screenshot", checkpoint: false, passed: false,
       status: "pending_visual_review", duration_seconds: 0,

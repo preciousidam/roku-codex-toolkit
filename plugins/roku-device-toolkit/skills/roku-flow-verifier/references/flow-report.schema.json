@@ -9,7 +9,7 @@
     "screenshot_count", "passed", "steps"
   ],
   "properties": {
-    "name": { "type": "string" },
+    "name": { "type": "string", "pattern": "\\S" },
     "host": { "type": "string" },
     "dry_run": { "type": "boolean" },
     "verified": { "type": "boolean" },
@@ -22,9 +22,19 @@
       "minItems": 1,
       "items": { "$ref": "#/$defs/stepResult" }
     },
-    "verification_error": { "type": "string" }
+    "verification_error": { "type": "string", "pattern": "\\S" }
   },
   "allOf": [
+    {
+      "if": {
+        "required": ["checkpoint_count"],
+        "properties": { "checkpoint_count": { "const": 0 } }
+      },
+      "then": {
+        "required": ["verification_error"],
+        "properties": { "verification_error": { "type": "string", "pattern": "\\S" } }
+      }
+    },
     {
       "if": {
         "required": ["passed"],
@@ -220,7 +230,13 @@
             "required": ["passed"],
             "properties": { "passed": { "const": true } }
           },
-          "then": { "properties": { "status": { "const": "passed" } } }
+          "then": {
+            "required": ["return_code"],
+            "properties": {
+              "status": { "const": "passed" },
+              "return_code": { "const": 0 }
+            }
+          }
         },
         {
           "if": {
