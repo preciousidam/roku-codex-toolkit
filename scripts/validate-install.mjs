@@ -11,6 +11,7 @@ const required = [
   ".agents/plugins/marketplace.json",
   "plugins/roku-device-toolkit/.codex-plugin/plugin.json",
   "plugins/roku-device-toolkit/.mcp.json",
+  "plugins/roku-device-toolkit/scripts/launch-mcp.mjs",
   "plugins/roku-device-toolkit/mcp/server.py",
   "plugins/roku-engineering/.codex-plugin/plugin.json",
 ];

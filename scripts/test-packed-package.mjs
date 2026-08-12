@@ -73,6 +73,7 @@ try {
     "package.json",
     "bin/roku-codex-toolkit.mjs",
     ".agents/plugins/marketplace.json",
+    "plugins/roku-device-toolkit/scripts/launch-mcp.mjs",
     "plugins/roku-device-toolkit/mcp/server.py",
     "plugins/roku-engineering/.codex-plugin/plugin.json",
   ]) {
@@ -97,6 +98,14 @@ try {
   const cli = path.join(installedRoot, "bin", "roku-codex-toolkit.mjs");
   run(process.execPath, [cli, "doctor", "--no-codex"], { cwd: temporary });
   run(process.execPath, [cli, "validate"], { cwd: temporary });
+  const launcher = path.join(installedRoot, "plugins", "roku-device-toolkit", "scripts", "launch-mcp.mjs");
+  const hiddenLauncher = `${launcher}.missing`;
+  fs.renameSync(launcher, hiddenLauncher);
+  const missingLauncher = runExpectFailure(process.execPath, [cli, "validate"], { cwd: temporary });
+  if (!`${missingLauncher.stdout}\n${missingLauncher.stderr}`.includes("missing plugins/roku-device-toolkit/scripts/launch-mcp.mjs")) {
+    throw new Error("Installed-package validation did not reject a missing MCP launcher.");
+  }
+  fs.renameSync(hiddenLauncher, launcher);
 
   const fakeBin = path.join(temporary, "bin");
   fs.mkdirSync(fakeBin);
