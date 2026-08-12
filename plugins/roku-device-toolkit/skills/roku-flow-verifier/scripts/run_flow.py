@@ -91,6 +91,10 @@ def bounded_pause(value: object) -> float:
     return seconds
 
 
+def elapsed_seconds(started: float) -> float:
+    return round(time.monotonic() - started, 3)
+
+
 def command_for(step: dict, host: str, evidence: Path) -> tuple[Optional[list[str]], Optional[Path]]:
     action = step.get("action")
     if action not in STEP_FIELDS:
@@ -265,8 +269,9 @@ def main() -> None:
     results = []
     overall = True
     for index, step in enumerate(scenario["steps"], start=1):
-        started = time.time()
-        result = {"index": index, "started_at": started}
+        started_at = time.time()
+        elapsed_started = time.monotonic()
+        result = {"index": index, "started_at": started_at}
         try:
             result["action"] = step.get("action")
             result["checkpoint"] = is_verification_checkpoint(step)
@@ -308,7 +313,7 @@ def main() -> None:
                 ),
                 "return_code": completed.returncode,
                 "stderr": completed.stderr.strip(),
-                "duration_seconds": round(time.time() - started, 3),
+                "duration_seconds": elapsed_seconds(elapsed_started),
             })
         except Exception as error:
             passed = False
@@ -317,7 +322,7 @@ def main() -> None:
                 "passed": False,
                 "status": "invalid" if args.dry_run else "failed",
                 "error": str(error),
-                "duration_seconds": round(time.time() - started, 3),
+                "duration_seconds": elapsed_seconds(elapsed_started),
             })
         results.append(result)
         overall = overall and step_succeeded

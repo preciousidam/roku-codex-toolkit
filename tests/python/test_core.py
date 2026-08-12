@@ -123,6 +123,11 @@ class FlowTests(unittest.TestCase):
         statuses = report["$defs"]["stepResult"]["properties"]["status"]["enum"]
         self.assertIn("pending_visual_review", statuses)
 
+    def test_elapsed_duration_uses_monotonic_clock(self):
+        with mock.patch.object(flow.time, "time", return_value=-1000), \
+             mock.patch.object(flow.time, "monotonic", return_value=12.75):
+            self.assertEqual(flow.elapsed_seconds(10), 2.75)
+
     def test_screenshot_is_not_automatic_verification(self):
         self.assertFalse(flow.is_verification_checkpoint({"action": "screenshot", "save": "screen.jpg"}))
         self.assertTrue(flow.is_verification_checkpoint({"action": "query", "kind": "player", "contains": "play"}))
