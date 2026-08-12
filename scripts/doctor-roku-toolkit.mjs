@@ -18,7 +18,11 @@ checks.push({
 });
 checks.push({ name: "Git", ok: commandAvailable("git"), detail: "git" });
 if (!process.argv.includes("--no-codex")) {
-  checks.push({ name: "Codex CLI", ok: commandAvailable("codex"), detail: "codex" });
+  checks.push({
+    name: "Codex plugin support",
+    ok: commandAvailable("codex", ["plugin", "marketplace", "list", "--json"]),
+    detail: "codex plugin marketplace list --json",
+  });
 }
 for (const check of checks) console.log(`${check.ok ? "ok" : "not ok"} - ${check.name} (${check.detail})`);
 if (checks.some((check) => !check.ok)) process.exit(1);

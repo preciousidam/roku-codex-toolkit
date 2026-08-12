@@ -5,7 +5,11 @@
 **/evidence/**
 **/.env
 **/.env.*
-**/config.json
+**/*.json
+!**/.codex-plugin/plugin.json
+!roku-device-toolkit/.mcp.json
+!roku-device-toolkit/skills/roku-flow-verifier/references/flow-report.schema.json
+!roku-device-toolkit/skills/roku-flow-verifier/references/flow-scenario.schema.json
 **/*.jpg
 **/*.jpeg
 **/*.png

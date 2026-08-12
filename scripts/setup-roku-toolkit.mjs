@@ -75,6 +75,12 @@ if (addMarketplace.status !== 0) {
     const restoreArgs = ["plugin", "marketplace", "add", previous.source];
     if (previous.ref) restoreArgs.push("--ref", previous.ref);
     requireSuccess(run("codex", restoreArgs), "Restoring the previous Roku Codex Toolkit marketplace");
+    for (const pluginName of pluginNames) {
+      requireSuccess(
+        run("codex", ["plugin", "add", `${pluginName}@${marketplaceName}`]),
+        `Restoring ${pluginName}`,
+      );
+    }
   }
   requireSuccess(addMarketplace, "Adding the Roku Codex Toolkit marketplace");
 }

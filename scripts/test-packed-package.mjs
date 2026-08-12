@@ -56,6 +56,7 @@ try {
     path.join(packRoot, "plugins", "roku-device-toolkit", "mcp", "__pycache__", "secret.pyc"),
     path.join(packRoot, "plugins", "roku-device-toolkit", "mcp", "evidence", "private.log"),
     path.join(packRoot, "plugins", "roku-device-toolkit", "config.json"),
+    path.join(packRoot, "plugins", "roku-device-toolkit", "private-target.json"),
     path.join(packRoot, "plugins", "roku-device-toolkit", "roku-screenshot.jpg"),
     path.join(packRoot, "plugins", "roku-device-toolkit", "captured-screen.png"),
   ]) {
@@ -81,7 +82,7 @@ try {
     if (/^(tests|\.github|docs)\//.test(name) || /(^|\/)(__pycache__|node_modules|evidence|artifacts)(\/|$)/.test(name)) {
       throw new Error(`Development-only path leaked into tarball: ${name}`);
     }
-    if (/\.(?:log|pyc|jpe?g|png)$/i.test(name) || /(^|\/)config\.json$/.test(name)) {
+    if (/\.(?:log|pyc|jpe?g|png)$/i.test(name) || /(^|\/)(?:config|private-target)\.json$/.test(name)) {
       throw new Error(`Unsafe artifact leaked into tarball: ${name}`);
     }
   }
@@ -162,6 +163,9 @@ try {
   const rollbackCalls = fs.readFileSync(commandLog, "utf8").trim().split(/\r?\n/).map(JSON.parse);
   if (!rollbackCalls.some((args) => args.join(" ") === "plugin marketplace add /previous")) {
     throw new Error("Failed marketplace replacement did not restore the previous source.");
+  }
+  if (rollbackCalls.filter((args) => args[0] === "plugin" && args[1] === "add").length !== 2) {
+    throw new Error("Failed marketplace replacement did not restore both plugins.");
   }
 
   fs.writeFileSync(commandLog, "");
