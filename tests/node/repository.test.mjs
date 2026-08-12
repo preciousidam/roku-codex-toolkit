@@ -78,6 +78,9 @@ test("flow schemas and examples expose stable public contracts", () => {
     { ...baseReport, verification_error: "contradiction" },
     { ...baseReport, name: "" },
     { ...baseReport, name: "   " },
+    { ...baseReport, host: "" },
+    { ...baseReport, host: "   " },
+    { ...baseReport, passed: false },
     { ...baseReport, pending_visual_review: undefined },
     { ...baseReport, steps: [{ ...baseReport.steps[0], passed: false }] },
     { ...baseReport, steps: [{ ...baseReport.steps[0], status: "failed" }] },
@@ -164,6 +167,15 @@ test("flow schemas and examples expose stable public contracts", () => {
       ...baseReport,
       passed: false,
       verified: false,
+      steps: [{
+        index: 1, action: "bogus", checkpoint: false, passed: false,
+        status: "failed", duration_seconds: 0,
+      }],
+    },
+    {
+      ...baseReport,
+      passed: false,
+      verified: false,
       checkpoint_count: 0,
       screenshot_count: 0,
       pending_visual_review: true,
@@ -196,6 +208,21 @@ test("flow schemas and examples expose stable public contracts", () => {
       artifact: "/tmp/screen.png", capture_succeeded: true, visual_review_required: true,
     }],
   }, "pending screenshot report");
+  const pendingWithoutExplanation = {
+    ...baseReport,
+    passed: false,
+    screenshot_count: 1,
+    pending_visual_review: true,
+    steps: [{
+      index: 1, action: "query", checkpoint: true, passed: true,
+      status: "passed", return_code: 0, duration_seconds: 0,
+    }, {
+      index: 2, action: "screenshot", checkpoint: false, passed: false,
+      status: "pending_visual_review", return_code: 0, duration_seconds: 0,
+      artifact: "/tmp/screen.png", capture_succeeded: true, visual_review_required: true,
+    }],
+  };
+  assert.equal(validateReport(pendingWithoutExplanation), false);
   for (const name of fs.readdirSync(path.join(root, "examples", "flow"))) {
     const example = readJson(path.join(root, "examples", "flow", name));
     assertSchemaValid(validateScenario, example, name);

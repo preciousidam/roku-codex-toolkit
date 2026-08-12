@@ -10,7 +10,7 @@
   ],
   "properties": {
     "name": { "type": "string", "pattern": "\\S" },
-    "host": { "type": "string" },
+    "host": { "type": "string", "pattern": "\\S" },
     "dry_run": { "type": "boolean" },
     "verified": { "type": "boolean" },
     "checkpoint_count": { "type": "integer", "minimum": 0 },
@@ -64,6 +64,25 @@
     },
     {
       "if": {
+        "required": ["dry_run", "verified", "pending_visual_review", "steps"],
+        "properties": {
+          "dry_run": { "const": false },
+          "verified": { "const": true },
+          "pending_visual_review": { "const": false },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["passed"],
+              "properties": { "passed": { "const": true } }
+            }
+          }
+        }
+      },
+      "then": { "properties": { "passed": { "const": true } } }
+    },
+    {
+      "if": {
         "required": ["verified"],
         "properties": { "verified": { "const": true } }
       },
@@ -112,7 +131,9 @@
         "properties": { "pending_visual_review": { "const": true } }
       },
       "then": {
+        "required": ["verification_error"],
         "properties": {
+          "verification_error": { "type": "string", "pattern": "\\S" },
           "steps": {
             "type": "array",
             "contains": {
@@ -225,6 +246,24 @@
         "error": { "type": "string" }
       },
       "allOf": [
+        {
+          "if": {
+            "required": ["action"],
+            "properties": {
+              "action": {
+                "not": {
+                  "enum": ["query", "launch", "press", "text", "screenshot", "pause"]
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "passed": { "const": false },
+              "status": { "const": "invalid" }
+            }
+          }
+        },
         {
           "if": {
             "required": ["passed"],

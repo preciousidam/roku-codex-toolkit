@@ -15,8 +15,8 @@ SCHEMA_VALIDATOR = ROOT / "tests/node/schema-validator.mjs"
 
 
 class FlowCliTests(unittest.TestCase):
-    def run_flow(self, scenario, evidence):
-        scenario_path = evidence.parent / "scenario.json"
+    def run_flow(self, scenario, evidence, scenario_filename="scenario.json"):
+        scenario_path = evidence.parent / scenario_filename
         scenario_path.write_text(json.dumps(scenario), encoding="utf-8")
         env = {**os.environ, "ROKU_DEVICE_TOOL": str(DEVICE)}
         completed = subprocess.run(
@@ -70,6 +70,17 @@ class FlowCliTests(unittest.TestCase):
             with self.subTest(index=index), tempfile.TemporaryDirectory() as temporary:
                 completed, _ = self.run_flow(scenario, Path(temporary) / "evidence")
                 self.assertNotEqual(completed.returncode, 0)
+
+    def test_omitted_name_rejects_blank_filename_stem(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            completed, report = self.run_flow(
+                {"steps": [{"action": "screenshot", "save": "screen.jpg"}]},
+                Path(temporary) / "evidence",
+                " .json",
+            )
+            self.assertNotEqual(completed.returncode, 0)
+            self.assertIsNone(report)
+            self.assertIn("filename stem must be non-empty", completed.stderr)
 
     def test_artifact_escape_duplicate_and_reserved_report_are_rejected(self):
         cases = (

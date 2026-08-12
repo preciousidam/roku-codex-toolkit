@@ -185,6 +185,9 @@ def main() -> None:
         not isinstance(scenario["name"], str) or not scenario["name"].strip()
     ):
         raise SystemExit("Scenario name must be a non-empty string when provided.")
+    scenario_name = scenario.get("name", args.scenario.stem)
+    if not scenario_name.strip():
+        raise SystemExit("Scenario filename stem must be non-empty when name is omitted.")
     if not scenario["steps"]:
         raise SystemExit("Scenario must contain at least one verification step.")
     if "continue_on_failure" in scenario and not isinstance(scenario["continue_on_failure"], bool):
@@ -259,7 +262,7 @@ def main() -> None:
         })
     if preflight_errors:
         report = {
-            "name": scenario.get("name", args.scenario.stem),
+            "name": scenario_name,
             "host": host,
             "dry_run": args.dry_run,
             "verified": False,
@@ -346,7 +349,7 @@ def main() -> None:
         result.get("status") == "pending_visual_review" for result in results
     )
     report = {
-        "name": scenario.get("name", args.scenario.stem),
+        "name": scenario_name,
         "host": host,
         "dry_run": args.dry_run,
         "verified": verified,
