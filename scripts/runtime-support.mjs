@@ -5,7 +5,15 @@ export const pythonCandidates = process.platform === "win32"
   : [{ command: "python3", args: [] }, { command: "python", args: [] }, { command: "py", args: ["-3"] }];
 
 export function commandStatus(command, args, options = {}) {
-  return spawnSync(command, args, { encoding: "utf8", timeout: 10_000, ...options });
+  const useWindowsShim = process.platform === "win32" && options.windowsShim;
+  const executable = useWindowsShim ? (process.env.ComSpec || "cmd.exe") : command;
+  const executableArgs = useWindowsShim ? ["/d", "/s", "/c", command, ...args] : args;
+  const { windowsShim: _windowsShim, ...spawnOptions } = options;
+  return spawnSync(executable, executableArgs, {
+    encoding: "utf8",
+    timeout: 10_000,
+    ...spawnOptions,
+  });
 }
 
 export function findPython() {
@@ -31,6 +39,6 @@ export function requirePython() {
 }
 
 export function commandAvailable(command, args = ["--version"]) {
-  const result = commandStatus(command, args);
+  const result = commandStatus(command, args, { windowsShim: true });
   return !result.error && result.status === 0;
 }

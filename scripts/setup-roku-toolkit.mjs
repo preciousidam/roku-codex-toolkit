@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import process from "node:process";
-import { requirePython } from "./runtime-support.mjs";
+import { commandStatus, requirePython } from "./runtime-support.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const marketplaceName = "roku-codex-toolkit";
 const marketplaceSource = "preciousidam/roku-codex-toolkit";
 const packageVersion = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8")).version;
+const sourceCheckout = fs.existsSync(path.join(repoRoot, ".git"));
 const pluginNames = ["roku-device-toolkit", "roku-engineering"];
 const configScript = path.join(repoRoot, "plugins/roku-device-toolkit/scripts/roku_config.py");
 const skipConfig = process.argv.includes("--skip-config");
@@ -20,13 +20,10 @@ if (process.argv.includes("--help")) {
 }
 
 function run(command, args, options = {}) {
-  const useWindowsShim = process.platform === "win32" && command === "codex";
-  const executable = useWindowsShim ? (process.env.ComSpec || "cmd.exe") : command;
-  const executableArgs = useWindowsShim ? ["/d", "/s", "/c", command, ...args] : args;
-  const result = spawnSync(executable, executableArgs, {
+  const result = commandStatus(command, args, {
     cwd: repoRoot,
-    encoding: "utf8",
     stdio: options.capture ? "pipe" : "inherit",
+    windowsShim: command === "codex" || command === "git",
   });
   if (result.error) {
     throw new Error(`${command} is required but unavailable: ${result.error.message}`);
@@ -42,23 +39,40 @@ function requireSuccess(result, description) {
 
 // Finish runtime preflight before changing Codex marketplace or plugin state.
 const python = requirePython();
-const marketplaces = run("codex", ["plugin", "marketplace", "list"], { capture: true });
+const marketplaces = run("codex", ["plugin", "marketplace", "list", "--json"], { capture: true });
 requireSuccess(marketplaces, "Reading Codex marketplaces");
-const marketplaceOutput = `${marketplaces.stdout}\n${marketplaces.stderr}`;
-const marketplaceLine = marketplaceOutput
-  .split(/\r?\n/)
-  .map((line) => line.trim())
-  .find((line) => line.startsWith(`${marketplaceName} `));
-if (marketplaceLine) {
+const marketplaceEntries = JSON.parse(marketplaces.stdout).marketplaces ?? [];
+const existingMarketplace = marketplaceEntries.find((entry) => entry.name === marketplaceName);
+const desiredSource = sourceCheckout ? repoRoot : marketplaceSource;
+const desiredArgs = sourceCheckout
+  ? ["plugin", "marketplace", "add", desiredSource]
+  : ["plugin", "marketplace", "add", desiredSource, "--ref", `v${packageVersion}`];
+
+if (!sourceCheckout) {
+  const remote = run(
+    "git",
+    ["ls-remote", "--exit-code", "--tags", `https://github.com/${marketplaceSource}.git`, `refs/tags/v${packageVersion}`],
+    { capture: true },
+  );
+  requireSuccess(remote, `Finding marketplace tag v${packageVersion}`);
+}
+
+if (existingMarketplace) {
   requireSuccess(
     run("codex", ["plugin", "marketplace", "remove", marketplaceName]),
     "Removing the existing Roku Codex Toolkit marketplace",
   );
 }
-requireSuccess(
-  run("codex", ["plugin", "marketplace", "add", marketplaceSource, "--ref", `v${packageVersion}`]),
-  "Adding the versioned Roku Codex Toolkit Git marketplace",
-);
+const addMarketplace = run("codex", desiredArgs);
+if (addMarketplace.status !== 0) {
+  const previous = existingMarketplace?.marketplaceSource;
+  if (previous?.source) {
+    const restoreArgs = ["plugin", "marketplace", "add", previous.source];
+    if (previous.ref) restoreArgs.push("--ref", previous.ref);
+    requireSuccess(run("codex", restoreArgs), "Restoring the previous Roku Codex Toolkit marketplace");
+  }
+  requireSuccess(addMarketplace, "Adding the Roku Codex Toolkit marketplace");
+}
 
 for (const pluginName of pluginNames) {
   requireSuccess(
