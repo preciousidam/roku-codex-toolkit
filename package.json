@@ -9,7 +9,7 @@
   },
   "files": [
     ".agents/plugins/marketplace.json",
-    "bin/",
+    "bin/roku-codex-toolkit.mjs",
     "plugins/roku-device-toolkit/.codex-plugin/plugin.json",
     "plugins/roku-device-toolkit/.mcp.json",
     "plugins/roku-device-toolkit/mcp/server.py",

@@ -60,6 +60,8 @@ try {
     path.join(packRoot, "plugins", "roku-device-toolkit", "secret-target.conf"),
     path.join(packRoot, "plugins", "roku-device-toolkit", "roku-screenshot.jpg"),
     path.join(packRoot, "plugins", "roku-device-toolkit", "captured-screen.png"),
+    path.join(packRoot, "bin", "roku-screenshot.jpg"),
+    path.join(packRoot, "bin", "private-target.conf"),
   ]) {
     fs.mkdirSync(path.dirname(fixture), { recursive: true });
     fs.writeFileSync(fixture, "must not ship");
@@ -71,7 +73,9 @@ try {
   ).stdout)[0];
   const names = new Set(packed.files.map((file) => file.path.replaceAll("\\", "/")));
   const packageMetadata = JSON.parse(fs.readFileSync(path.join(packRoot, "package.json"), "utf8"));
-  const allowedPluginFiles = new Set(packageMetadata.files.filter((name) => name.startsWith("plugins/")));
+  const explicitlyAllowedFiles = new Set(packageMetadata.files.filter(
+    (name) => name.startsWith("plugins/") || name.startsWith("bin/"),
+  ));
   for (const required of [
     "package.json",
     "bin/roku-codex-toolkit.mjs",
@@ -83,8 +87,8 @@ try {
     if (!names.has(required)) throw new Error(`Packed tarball is missing ${required}`);
   }
   for (const name of names) {
-    if (name.startsWith("plugins/") && !allowedPluginFiles.has(name)) {
-      throw new Error(`Plugin file is outside the explicit package inventory: ${name}`);
+    if ((name.startsWith("plugins/") || name.startsWith("bin/")) && !explicitlyAllowedFiles.has(name)) {
+      throw new Error(`File is outside the explicit package inventory: ${name}`);
     }
     if (/^(tests|\.github|docs)\//.test(name) || /(^|\/)(__pycache__|node_modules|evidence|artifacts)(\/|$)/.test(name)) {
       throw new Error(`Development-only path leaked into tarball: ${name}`);
@@ -188,6 +192,25 @@ try {
   }
 
   fs.writeFileSync(commandLog, "");
+  const enabledFakeSource = fs.readFileSync(fakeScript, "utf8");
+  fs.writeFileSync(fakeScript, enabledFakeSource.replace("installed: true", "installed: true, enabled: false"));
+  const disabledSetup = runExpectFailure(process.execPath, [cli, "setup", "--skip-config"], {
+    cwd: temporary,
+    env: { ...fakeEnvironment, FAKE_EXISTING: "1" },
+  });
+  fs.writeFileSync(fakeScript, enabledFakeSource);
+  if (!`${disabledSetup.stdout}\n${disabledSetup.stderr}`.includes("disabled plugins")) {
+    throw new Error("Setup did not explain why disabled plugin state cannot be replaced safely.");
+  }
+  const disabledCalls = fs.readFileSync(commandLog, "utf8").trim().split(/\r?\n/).map(JSON.parse);
+  if (disabledCalls.some((args) => args[0] === "plugin" && (
+    ["add", "remove"].includes(args[1]) ||
+    (args[1] === "marketplace" && ["add", "remove"].includes(args[2]))
+  ))) {
+    throw new Error("Setup changed Codex state after finding a disabled toolkit plugin.");
+  }
+
+  fs.writeFileSync(commandLog, "");
   runExpectFailure(process.execPath, [cli, "setup", "--skip-config"], {
     cwd: temporary,
     env: {
@@ -228,6 +251,9 @@ try {
   const firstInstallCalls = fs.readFileSync(commandLog, "utf8").trim().split(/\r?\n/).map(JSON.parse);
   if (!firstInstallCalls.some((args) => args.join(" ") === "plugin marketplace remove roku-codex-toolkit")) {
     throw new Error("Failed first-time plugin installation did not clean up the partial marketplace.");
+  }
+  if (!firstInstallCalls.some((args) => args.join(" ") === "plugin remove roku-device-toolkit@roku-codex-toolkit")) {
+    throw new Error("Failed first-time plugin installation did not remove the partially installed plugin.");
   }
 
   fs.writeFileSync(commandLog, "");

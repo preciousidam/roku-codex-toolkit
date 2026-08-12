@@ -54,6 +54,8 @@ test("npm metadata exposes a side-effect-free public CLI package", () => {
   assert.equal(metadata.publishConfig.access, "public");
   assert.equal(metadata.publishConfig.provenance, true);
   assert.equal(metadata.scripts.postinstall, undefined);
+  assert.ok(!metadata.files.includes("bin/"));
+  assert.ok(metadata.files.includes("bin/roku-codex-toolkit.mjs"));
   assert.ok(!metadata.files.includes("plugins/"));
   assert.ok(metadata.files.every((name) => name !== "plugins/"));
   const trackedPluginFiles = execFileSync("git", ["ls-files", "--", "plugins"], {
@@ -67,6 +69,10 @@ test("npm metadata exposes a side-effect-free public CLI package", () => {
   for (const pluginRoot of pluginRoots) {
     assert.equal(readJson(path.join(pluginRoot, ".codex-plugin/plugin.json")).version, metadata.version);
   }
+  assert.match(
+    fs.readFileSync(path.join(pluginRoots[0], "mcp", "server.py"), "utf8"),
+    /"serverInfo": \{"name": "roku-device-toolkit", "version": PLUGIN_VERSION\}/,
+  );
 });
 
 test("setup runtime rejects unsupported Node versions", () => {

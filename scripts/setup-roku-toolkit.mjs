@@ -58,26 +58,40 @@ if (existingMarketplace) {
   const plugins = run("codex", ["plugin", "list", "--json"], { capture: true });
   requireSuccess(plugins, "Inspecting installed Roku Codex Toolkit plugins");
   const installed = JSON.parse(plugins.stdout).installed ?? [];
-  previouslyInstalledPlugins = pluginNames.filter((pluginName) => installed.some(
-    (entry) => entry.name === pluginName && entry.marketplaceName === marketplaceName && entry.installed === true,
-  ));
+  previouslyInstalledPlugins = installed.filter((entry) => (
+    pluginNames.includes(entry.name) && entry.marketplaceName === marketplaceName && entry.installed === true
+  )).map((entry) => ({ name: entry.name, enabled: entry.enabled !== false }));
+  const disabled = previouslyInstalledPlugins.filter((entry) => !entry.enabled).map((entry) => entry.name);
+  if (disabled.length > 0) {
+    throw new Error(
+      `Setup cannot safely replace a marketplace containing disabled plugins: ${disabled.join(", ")}. ` +
+      "Enable or remove them explicitly before retrying so their state is not changed by rollback.",
+    );
+  }
 }
 const desiredSource = sourceCheckout ? repoRoot : marketplaceSource;
 const desiredArgs = sourceCheckout
   ? ["plugin", "marketplace", "add", desiredSource]
   : ["plugin", "marketplace", "add", desiredSource, "--ref", `v${packageVersion}`];
+const installedThisAttempt = [];
 
 function restorePreviousMarketplace() {
   const previous = existingMarketplace?.marketplaceSource;
+  for (const pluginName of [...installedThisAttempt].reverse()) {
+    requireSuccess(
+      run("codex", ["plugin", "remove", `${pluginName}@${marketplaceName}`]),
+      `Removing partially installed ${pluginName}`,
+    );
+  }
   run("codex", ["plugin", "marketplace", "remove", marketplaceName]);
   if (!previous?.source) return;
   const restoreArgs = ["plugin", "marketplace", "add", previous.source];
   if (previous.ref) restoreArgs.push("--ref", previous.ref);
   requireSuccess(run("codex", restoreArgs), "Restoring the previous Roku Codex Toolkit marketplace");
-  for (const pluginName of previouslyInstalledPlugins) {
+  for (const plugin of previouslyInstalledPlugins) {
     requireSuccess(
-      run("codex", ["plugin", "add", `${pluginName}@${marketplaceName}`]),
-      `Restoring ${pluginName}`,
+      run("codex", ["plugin", "add", `${plugin.name}@${marketplaceName}`]),
+      `Restoring ${plugin.name}`,
     );
   }
 }
@@ -106,6 +120,7 @@ try {
       run("codex", ["plugin", "add", `${pluginName}@${marketplaceName}`]),
       `Installing ${pluginName}`,
     );
+    installedThisAttempt.push(pluginName);
   }
 } catch (error) {
   restorePreviousMarketplace();
