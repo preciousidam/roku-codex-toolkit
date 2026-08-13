@@ -42,3 +42,17 @@ jobs:
         with:
           python-version: "3.13"
       - run: npm run test:package
+
+  documentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.12
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - run: npm ci --ignore-scripts
+        working-directory: website
+      - run: npm run check
+        working-directory: website

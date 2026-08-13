@@ -1,0 +1,58 @@
+# Inactive deployment template. Do not copy this file into .github/workflows
+# or enable GitHub Pages without explicit publication approval.
+name: Deploy documentation to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "website/**"
+      - ".github/workflows/docs-pages.yml"
+      - "README.md"
+      - "SECURITY.md"
+      - "CONTRIBUTING.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: documentation-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    permissions:
+      contents: read
+      pages: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.12
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - run: npm ci --ignore-scripts
+        working-directory: website
+      - run: npm run check
+        working-directory: website
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: website/dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

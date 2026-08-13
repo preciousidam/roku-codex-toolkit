@@ -9,3 +9,7 @@ evidence/
 *.log
 node_modules/
 *.tgz
+website/.astro/
+website/dist/
+website/src/content/docs/
+website/public/media/

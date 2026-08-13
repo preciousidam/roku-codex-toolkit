@@ -1,0 +1,20 @@
+{
+  "name": "roku-codex-toolkit-docs",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "sync": "node scripts/sync-docs.mjs",
+    "dev": "npm run sync && node scripts/run-astro.mjs dev",
+    "build": "npm run sync && node scripts/run-astro.mjs build",
+    "preview": "node scripts/run-astro.mjs preview",
+    "check": "npm run build && node scripts/validate-site.mjs"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "0.41.7",
+    "astro": "7.2.1"
+  }
+}
