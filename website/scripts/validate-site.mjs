@@ -15,6 +15,9 @@ function filesUnder(directory) {
 
 function targetFor(url) {
   const pathname = url.split(/[?#]/, 1)[0];
+  if (pathname.startsWith("/") && !pathname.startsWith("//") && !pathname.startsWith(basePath)) {
+    throw new Error(`root-relative link escapes configured base path: ${url}`);
+  }
   if (!pathname.startsWith(basePath)) return null;
   const relative = decodeURIComponent(pathname.slice(basePath.length));
   if (!relative || relative.endsWith("/")) return path.join(outputRoot, relative, "index.html");
@@ -37,8 +40,12 @@ for (const file of htmlFiles) {
     if (!/\balt=["'][^"']*["']/i.test(image)) failures.push(`${page}: image missing alt text`);
   }
   for (const match of html.matchAll(/\bhref=["']([^"']+)["']/gi)) {
-    const target = targetFor(match[1]);
-    if (target && !fs.existsSync(target)) failures.push(`${page}: broken link ${match[1]}`);
+    try {
+      const target = targetFor(match[1]);
+      if (target && !fs.existsSync(target)) failures.push(`${page}: broken link ${match[1]}`);
+    } catch (error) {
+      failures.push(`${page}: ${error.message}`);
+    }
   }
 }
 

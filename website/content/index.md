@@ -6,11 +6,11 @@ hero:
   tagline: Operate development devices, verify flows with explicit evidence, diagnose failures, review accessibility, and prepare releases.
   actions:
     - text: Get started
-      link: /getting-started/
+      link: ./getting-started/
       icon: right-arrow
       variant: primary
     - text: Explore the plugins
-      link: /marketplace/
+      link: ./marketplace/
       icon: open-book
     - text: View on GitHub
       link: https://github.com/preciousidam/roku-codex-toolkit
@@ -32,7 +32,7 @@ that a UI is correct.
 Begin with the host-only installation checks. A physical Roku is required only when you move from
 package and scenario validation to real device queries or actions.
 
-- [Install and run a first evidence-aware flow](/getting-started/)
-- [Compare plugin capabilities](/marketplace/)
-- [Open schemas, skills, tools, and examples](/reference/)
-- [Understand security and evidence boundaries](/security/)
+- [Install and run a first evidence-aware flow](./getting-started/)
+- [Compare plugin capabilities](./marketplace/)
+- [Open schemas, skills, tools, and examples](./reference/)
+- [Understand security and evidence boundaries](./security/)
