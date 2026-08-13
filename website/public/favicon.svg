@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Roku Codex Toolkit</title>
+  <rect width="64" height="64" rx="14" fill="#17112b"/>
+  <path d="M17 22l10 10-10 10M32 42h15" fill="none" stroke="#f7f4ff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="45" cy="22" r="6" fill="none" stroke="#9b7cff" stroke-width="4"/>
+</svg>
