@@ -1,5 +1,3 @@
-# Inactive deployment template. Do not copy this file into .github/workflows
-# or enable GitHub Pages without explicit publication approval.
 name: Deploy documentation to GitHub Pages
 
 on:
