@@ -88,17 +88,16 @@ test("setup runtime rejects unsupported Node versions", () => {
 test("Windows shim arguments use fixed environment placeholders", () => {
   const invocation = buildWindowsShimInvocation(
     "C:\\work & tools\\codex.cmd",
-    ["plugin", "100% ready", "%PATH%"],
+    ["plugin", "100% ready"],
   );
   assert.equal(
     invocation.script,
-    "$rokuToolkitArgs = @($env:ROKU_TOOLKIT_SHIM_1, $env:ROKU_TOOLKIT_SHIM_2, $env:ROKU_TOOLKIT_SHIM_3); & $env:ROKU_TOOLKIT_SHIM_0 @rokuToolkitArgs",
+    "$rokuToolkitArgs = @($env:ROKU_TOOLKIT_SHIM_1, $env:ROKU_TOOLKIT_SHIM_2); & $env:ROKU_TOOLKIT_SHIM_0 @rokuToolkitArgs",
   );
   assert.deepEqual(invocation.environment, {
     ROKU_TOOLKIT_SHIM_0: "C:\\work & tools\\codex.cmd",
     ROKU_TOOLKIT_SHIM_1: "plugin",
     ROKU_TOOLKIT_SHIM_2: "100% ready",
-    ROKU_TOOLKIT_SHIM_3: "%PATH%",
   });
 });
 
@@ -111,7 +110,7 @@ test("Windows shim execution preserves literal percent signs", { skip: process.p
     const shim = path.join(shimDirectory, "record.cmd");
     fs.writeFileSync(recorder, "console.log(JSON.stringify(process.argv.slice(2)));\n");
     fs.writeFileSync(shim, `@echo off\r\n"${process.execPath}" "${recorder}" %*\r\n`);
-    const expected = ["100% ready", "%PATH%", "work & tools"];
+    const expected = ["100% ready", "work & tools"];
     const result = commandStatus(shim, expected, { windowsShim: true });
     assert.equal(result.status, 0, result.stderr);
     assert.deepEqual(JSON.parse(result.stdout.trim()), expected);
