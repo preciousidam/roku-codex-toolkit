@@ -1,10 +1,16 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { assertSchemaValid, compileSchema } from "./schema-validator.mjs";
+import {
+  buildWindowsShimInvocation,
+  commandStatus,
+  requireSupportedNode,
+} from "../../scripts/runtime-support.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const pluginRoots = ["roku-device-toolkit", "roku-engineering"].map((name) => path.join(root, "plugins", name));
@@ -326,5 +332,76 @@ test("flow schemas and examples expose stable public contracts", () => {
       ],
     };
     assert.equal(validateScenario(invalid), false, JSON.stringify(metadata));
+  }
+});
+
+test("npm metadata exposes a side-effect-free public CLI package", () => {
+  const metadata = readJson(path.join(root, "package.json"));
+  assert.equal(metadata.private, undefined);
+  assert.equal(metadata.bin["roku-codex-toolkit"], "./bin/roku-codex-toolkit.mjs");
+  assert.equal(metadata.publishConfig.access, "public");
+  assert.equal(metadata.publishConfig.provenance, true);
+  assert.equal(metadata.scripts.postinstall, undefined);
+  assert.ok(!metadata.files.includes("bin/"));
+  assert.ok(metadata.files.includes("bin/roku-codex-toolkit.mjs"));
+  assert.ok(!metadata.files.includes("plugins/"));
+  const trackedPluginFiles = execFileSync("git", ["ls-files", "--", "plugins"], {
+    cwd: root,
+    encoding: "utf8",
+  }).trim().split(/\r?\n/).filter(Boolean);
+  for (const file of trackedPluginFiles) {
+    assert.ok(metadata.files.includes(file), `package inventory omits ${file}`);
+  }
+  assert.ok(!metadata.files.includes("tests/"));
+  for (const pluginRoot of pluginRoots) {
+    assert.equal(readJson(path.join(pluginRoot, ".codex-plugin/plugin.json")).version, metadata.version);
+  }
+  assert.match(
+    fs.readFileSync(path.join(pluginRoots[0], "mcp", "server.py"), "utf8"),
+    /"serverInfo": \{"name": "roku-device-toolkit", "version": PLUGIN_VERSION\}/,
+  );
+});
+
+test("setup runtime rejects unsupported Node versions", () => {
+  const original = process.versions.node;
+  Object.defineProperty(process.versions, "node", { configurable: true, value: "17.9.1" });
+  try {
+    assert.throws(() => requireSupportedNode(), /Node\.js 18 or newer/);
+  } finally {
+    Object.defineProperty(process.versions, "node", { configurable: true, value: original });
+  }
+});
+
+test("Windows shim arguments use fixed environment placeholders", () => {
+  const invocation = buildWindowsShimInvocation(
+    "C:\\work & tools\\codex.cmd",
+    ["plugin", "100% ready"],
+  );
+  assert.equal(
+    invocation.script,
+    "$rokuToolkitArgs = @($env:ROKU_TOOLKIT_SHIM_1, $env:ROKU_TOOLKIT_SHIM_2); & $env:ROKU_TOOLKIT_SHIM_0 @rokuToolkitArgs",
+  );
+  assert.deepEqual(invocation.environment, {
+    ROKU_TOOLKIT_SHIM_0: "C:\\work & tools\\codex.cmd",
+    ROKU_TOOLKIT_SHIM_1: "plugin",
+    ROKU_TOOLKIT_SHIM_2: "100% ready",
+  });
+});
+
+test("Windows shim execution preserves literal percent signs", { skip: process.platform !== "win32" }, () => {
+  const temporary = fs.mkdtempSync(path.join(process.env.RUNNER_TEMP ?? process.cwd(), "roku-shim-"));
+  try {
+    const recorder = path.join(temporary, "record-args.mjs");
+    const shimDirectory = path.join(temporary, "100% & tools");
+    fs.mkdirSync(shimDirectory);
+    const shim = path.join(shimDirectory, "record.cmd");
+    fs.writeFileSync(recorder, "console.log(JSON.stringify(process.argv.slice(2)));\n");
+    fs.writeFileSync(shim, `@echo off\r\n"${process.execPath}" "${recorder}" %*\r\n`);
+    const expected = ["100% ready", "work & tools"];
+    const result = commandStatus(shim, expected, { windowsShim: true });
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout.trim()), expected);
+  } finally {
+    fs.rmSync(temporary, { recursive: true, force: true });
   }
 });

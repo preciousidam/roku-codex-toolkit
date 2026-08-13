@@ -14,6 +14,7 @@ The repository intentionally excludes product-specific authentication, entitleme
 - Codex with plugin support
 - Node.js 18 or newer
 - Python 3.9 or newer
+- Git (used to verify and install versioned marketplace tags)
 - A Roku device on the same network with developer mode enabled for sideloading, screenshots, or console capture
 
 ## Install from a clone
@@ -27,6 +28,32 @@ npm run setup
 ```
 
 `npm run setup` registers this repository as the `roku-codex-toolkit` marketplace, installs both plugins, and optionally prompts for device configuration. Use `npm run setup -- --skip-config` to install without configuring a Roku.
+
+## Install with npm (preview)
+
+The npm distribution is under development and has not been published. Once released, the intended workflow is:
+
+```sh
+npx roku-codex-toolkit doctor
+npx roku-codex-toolkit setup
+```
+
+Python 3.9+ and Git remain external requirements; the npm package bundles neither. `doctor` checks Node, Python, Git, and Codex. `setup` completes those runtime checks before changing Codex configuration, then registers the matching versioned Git tag as the durable marketplace source. The transient `npx` cache is never registered. Use `--skip-config` to install the plugins without prompting for a Roku target.
+
+`setup` intentionally refuses to replace an existing marketplace or alter orphaned toolkit plugin state. Codex does not currently expose enough information to reconstruct a version-pinned marketplace safely after an interrupted replacement.
+
+Upgrades are therefore explicit. Confirm the desired version and that no toolkit plugin is intentionally disabled, then run:
+
+```sh
+codex plugin remove roku-device-toolkit@roku-codex-toolkit
+codex plugin remove roku-engineering@roku-codex-toolkit
+codex plugin marketplace remove roku-codex-toolkit
+npx roku-codex-toolkit@<version> setup
+```
+
+If any removal fails, stop and inspect `codex plugin list --json` and `codex plugin marketplace list --json` before continuing. Existing Roku device configuration is intentionally retained. To uninstall, use the same removal commands and then uninstall any globally installed npm package.
+
+Installing from the GitHub marketplace remains supported and canonical. No package is published, tagged, or promoted automatically by repository changes.
 
 Device configuration is stored at `~/.config/roku-device-toolkit/config.json`. On macOS, the developer password is stored in Keychain. Linux and Windows users should provide `ROKU_DEV_PASSWORD` only to the process that needs developer-mode access.
 

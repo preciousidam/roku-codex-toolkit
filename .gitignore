@@ -7,3 +7,5 @@ node_modules/
 artifacts/
 evidence/
 *.log
+node_modules/
+*.tgz
