@@ -13,13 +13,19 @@ function filesUnder(directory) {
   });
 }
 
-function targetFor(url) {
+function targetFor(url, pageFile) {
   const pathname = url.split(/[?#]/, 1)[0];
-  if (pathname.startsWith("/") && !pathname.startsWith("//") && !pathname.startsWith(basePath)) {
+  if (!pathname || pathname.startsWith("//") || /^[a-z][a-z\d+.-]*:/i.test(pathname)) return null;
+  if (pathname.startsWith("/") && !pathname.startsWith(basePath)) {
     throw new Error(`root-relative link escapes configured base path: ${url}`);
   }
-  if (!pathname.startsWith(basePath)) return null;
-  const relative = decodeURIComponent(pathname.slice(basePath.length));
+  const page = path.relative(outputRoot, pageFile).split(path.sep).join("/");
+  const route = page.endsWith("index.html") ? page.slice(0, -"index.html".length) : page;
+  const resolved = new URL(pathname, `https://docs.invalid${basePath}${route}`);
+  if (!resolved.pathname.startsWith(basePath)) {
+    throw new Error(`relative link escapes configured base path: ${url}`);
+  }
+  const relative = decodeURIComponent(resolved.pathname.slice(basePath.length));
   if (!relative || relative.endsWith("/")) return path.join(outputRoot, relative, "index.html");
   const direct = path.join(outputRoot, relative);
   return path.extname(relative) ? direct : path.join(direct, "index.html");
@@ -41,7 +47,7 @@ for (const file of htmlFiles) {
   }
   for (const match of html.matchAll(/\bhref=["']([^"']+)["']/gi)) {
     try {
-      const target = targetFor(match[1]);
+      const target = targetFor(match[1], file);
       if (target && !fs.existsSync(target)) failures.push(`${page}: broken link ${match[1]}`);
     } catch (error) {
       failures.push(`${page}: ${error.message}`);

@@ -12,3 +12,4 @@ node_modules/
 website/.astro/
 website/dist/
 website/src/content/docs/
+website/public/media/

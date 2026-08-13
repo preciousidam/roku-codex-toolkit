@@ -8,6 +8,7 @@ on:
     paths:
       - "docs/**"
       - "website/**"
+      - ".github/workflows/docs-pages.yml"
       - "README.md"
       - "SECURITY.md"
       - "CONTRIBUTING.md"
@@ -22,6 +23,9 @@ concurrency:
 
 jobs:
   build:
+    permissions:
+      contents: read
+      pages: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6

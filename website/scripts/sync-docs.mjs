@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 const websiteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repositoryRoot = path.resolve(websiteRoot, "..");
 const outputRoot = path.join(websiteRoot, "src", "content", "docs");
+const publicMediaRoot = path.join(websiteRoot, "public", "media");
 const repositoryUrl = "https://github.com/preciousidam/roku-codex-toolkit";
 
 const canonicalPages = [
@@ -23,6 +24,12 @@ const canonicalPages = [
   ["SECURITY.md", "security.md"],
   ["CONTRIBUTING.md", "contributing.md"],
 ];
+const portalRoutes = new Map(
+  canonicalPages.map(([sourceName, destinationName]) => [
+    path.basename(sourceName),
+    destinationName.replace(/\.md$/, ""),
+  ]),
+);
 
 function portalMarkdown(source, sourceName) {
   const normalized = source.replaceAll("\r\n", "\n");
@@ -36,7 +43,13 @@ function portalMarkdown(source, sourceName) {
     .replaceAll(
       "](media/)",
       `](${repositoryUrl}/tree/main/docs/media)`,
-    );
+    )
+    .replaceAll("](media/roku-device-toolkit-mark.svg)", "](../media/roku-device-toolkit-mark.svg)")
+    .replaceAll("](media/roku-engineering-mark.svg)", "](../media/roku-engineering-mark.svg)")
+    .replace(/\]\((?:\.\.\/)?([^/)]+\.md)(#[^)]+)?\)/g, (match, fileName, hash = "") => {
+      const route = portalRoutes.get(fileName);
+      return route ? `](../${route}/${hash})` : match;
+    });
   return `---\ntitle: ${JSON.stringify(heading[1])}\n---\n\n${body}`;
 }
 
@@ -57,6 +70,10 @@ for (const entry of fs.readdirSync(path.join(websiteRoot, "content"))) {
   fs.copyFileSync(path.join(websiteRoot, "content", entry), path.join(outputRoot, entry));
 }
 
+fs.rmSync(publicMediaRoot, { recursive: true, force: true });
+fs.cpSync(path.join(repositoryRoot, "docs", "media"), publicMediaRoot, {
+  recursive: true,
+});
 fs.cpSync(path.join(repositoryRoot, "docs", "media"), path.join(outputRoot, "media"), {
   recursive: true,
 });
