@@ -407,6 +407,7 @@ test("release metadata and publication workflow enforce a single version", () =>
   assert.match(workflow, /environment: npm/);
   assert.match(workflow, /id-token: write/);
   assert.match(workflow, /!github\.event\.release\.prerelease/);
+  assert.doesNotMatch(workflow, /ref: \$\{\{ github\.event\.release\.tag_name \}\}/);
   assert.match(workflow, /RELEASE_TAG: \$\{\{ github\.event\.release\.tag_name \}\}/);
   assert.match(workflow, /npm run verify:release -- "\$RELEASE_TAG"/);
   assert.doesNotMatch(workflow, /run:.*\$\{\{ github\.event\.release\.tag_name \}\}/);
