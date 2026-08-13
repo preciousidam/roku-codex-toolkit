@@ -103,10 +103,12 @@ test("Windows shim arguments use fixed environment placeholders", () => {
 });
 
 test("Windows shim execution preserves literal percent signs", { skip: process.platform !== "win32" }, () => {
-  const temporary = fs.mkdtempSync(path.join(process.env.RUNNER_TEMP ?? process.cwd(), "roku-100%-"));
+  const temporary = fs.mkdtempSync(path.join(process.env.RUNNER_TEMP ?? process.cwd(), "roku-shim-"));
   try {
     const recorder = path.join(temporary, "record-args.mjs");
-    const shim = path.join(temporary, "record.cmd");
+    const shimDirectory = path.join(temporary, "100% & tools");
+    fs.mkdirSync(shimDirectory);
+    const shim = path.join(shimDirectory, "record.cmd");
     fs.writeFileSync(recorder, "console.log(JSON.stringify(process.argv.slice(2)));\n");
     fs.writeFileSync(shim, `@echo off\r\n"${process.execPath}" "${recorder}" %*\r\n`);
     const expected = ["100% ready", "%PATH%", "work & tools"];
