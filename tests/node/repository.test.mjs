@@ -85,6 +85,31 @@ test("device plugin exposes the portable launcher", () => {
   assert.equal(config.mcpServers["roku-device"].command, "node");
 });
 
+test("public plugin metadata references sanitized reusable assets", () => {
+  for (const pluginRoot of pluginRoots) {
+    const manifest = readJson(path.join(pluginRoot, ".codex-plugin", "plugin.json"));
+    assert.equal(manifest.license, "Apache-2.0");
+    assert.match(manifest.interface.websiteURL, /^https:\/\//);
+    assert.ok(manifest.interface.defaultPrompt.length <= 3);
+    assert.ok(manifest.interface.defaultPrompt.every((prompt) => prompt.length <= 128));
+    for (const relative of [
+      manifest.interface.composerIcon,
+      manifest.interface.logo,
+      ...manifest.interface.screenshots,
+    ]) {
+      assert.match(relative, /^\.\/assets\/.+\.png$/);
+      const asset = path.resolve(pluginRoot, relative);
+      assert.ok(fs.statSync(asset).isFile(), asset);
+      assert.deepEqual(fs.readFileSync(asset).subarray(0, 8), Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+    }
+  }
+  const presentation = fs.readFileSync(path.join(root, "docs", "marketplace.md"), "utf8");
+  assert.match(presentation, /two plugins[\s\S]*five skills[\s\S]*13 MCP tools/i);
+  assert.match(presentation, /not claim physical Roku coverage/i);
+  assert.match(presentation, /does not\s+replace an editor/i);
+  assert.doesNotMatch(presentation, /(?:https?:\/\/)?(?:\d{1,3}\.){3}\d{1,3}/);
+});
+
 test("flow schemas and examples expose stable public contracts", () => {
   const references = path.join(pluginRoots[0], "skills", "roku-flow-verifier", "references");
   const scenarioSchema = readJson(path.join(references, "flow-scenario.schema.json"));

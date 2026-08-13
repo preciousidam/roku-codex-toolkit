@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">Sanitized Roku Device Toolkit terminal demo</title>
+  <desc id="desc">Synthetic terminal output showing host checks and an evidence checkpoint.</desc>
+  <rect width="1200" height="675" fill="#0D0B15"/>
+  <rect x="42" y="42" width="1116" height="591" rx="24" fill="#171424" stroke="#40355F" stroke-width="3"/>
+  <circle cx="82" cy="80" r="9" fill="#FF6B8B"/><circle cx="112" cy="80" r="9" fill="#FFD166"/><circle cx="142" cy="80" r="9" fill="#73E2A7"/>
+  <text x="600" y="88" text-anchor="middle" fill="#BBA9F5" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="22">Roku Device Toolkit · sanitized fixture</text>
+  <g font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="24">
+    <text x="78" y="150" fill="#9B7CFF">$</text><text x="108" y="150" fill="#F7F4FF">npx roku-codex-toolkit doctor --no-codex</text>
+    <text x="78" y="199" fill="#73E2A7">ok</text><text x="126" y="199" fill="#D8D2E8">Node.js ≥18</text>
+    <text x="78" y="239" fill="#73E2A7">ok</text><text x="126" y="239" fill="#D8D2E8">Python ≥3.9</text>
+    <text x="78" y="279" fill="#73E2A7">ok</text><text x="126" y="279" fill="#D8D2E8">Git</text>
+    <text x="78" y="347" fill="#9B7CFF">›</text><text x="108" y="347" fill="#F7F4FF">query active app on roku.example</text>
+    <text x="78" y="396" fill="#73E2A7">action</text><text x="182" y="396" fill="#D8D2E8">completed</text>
+    <text x="78" y="436" fill="#73E2A7">checkpoint</text><text x="238" y="436" fill="#D8D2E8">passed: expected fixture text found</text>
+    <text x="78" y="504" fill="#9B7CFF">›</text><text x="108" y="504" fill="#F7F4FF">capture screenshot</text>
+    <text x="78" y="553" fill="#FFD166">pending</text><text x="198" y="553" fill="#D8D2E8">visual review required — no UI pass claimed</text>
+  </g>
+  <text x="1122" y="608" text-anchor="end" fill="#776E8D" font-family="ui-sans-serif, system-ui, sans-serif" font-size="18">Sample output · not physical-device evidence</text>
+</svg>

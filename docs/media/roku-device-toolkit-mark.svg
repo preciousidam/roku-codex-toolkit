@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Roku Device Toolkit mark</title>
+  <desc id="desc">A terminal prompt and remote directional pad on a dark violet tile.</desc>
+  <rect width="512" height="512" rx="112" fill="#17112B"/>
+  <rect x="76" y="96" width="360" height="248" rx="32" fill="#261C48" stroke="#9B7CFF" stroke-width="12"/>
+  <circle cx="112" cy="132" r="10" fill="#FF6B8B"/>
+  <circle cx="144" cy="132" r="10" fill="#FFD166"/>
+  <circle cx="176" cy="132" r="10" fill="#73E2A7"/>
+  <path d="M126 208l46 38-46 38M202 284h92" fill="none" stroke="#F7F4FF" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="356" cy="246" r="54" fill="none" stroke="#9B7CFF" stroke-width="14"/>
+  <path d="M356 170v38M356 284v38M280 246h38M394 246h38" stroke="#9B7CFF" stroke-width="14" stroke-linecap="round"/>
+  <rect x="168" y="382" width="176" height="22" rx="11" fill="#9B7CFF"/>
+</svg>

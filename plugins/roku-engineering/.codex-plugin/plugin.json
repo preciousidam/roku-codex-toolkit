@@ -1,12 +1,14 @@
 {
   "name": "roku-engineering",
   "version": "0.2.0",
-  "description": "Diagnose, review, and prepare releases for Roku BrightScript and SceneGraph projects.",
+  "description": "Diagnose Roku failures, review accessibility, and validate releases.",
   "author": {
-    "name": "Ebube Idam"
+    "name": "Ebube Idam",
+    "url": "https://github.com/preciousidam"
   },
   "homepage": "https://github.com/preciousidam/roku-codex-toolkit",
   "repository": "https://github.com/preciousidam/roku-codex-toolkit",
+  "license": "Apache-2.0",
   "keywords": [
     "roku",
     "brightscript",
@@ -17,17 +19,24 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Roku Engineering",
-    "shortDescription": "Diagnose and release Roku applications",
-    "longDescription": "Project-neutral Roku runtime-log analysis, accessibility review, and release validation for BrightScript and SceneGraph repositories.",
+    "shortDescription": "Diagnose, review, and validate Roku applications",
+    "longDescription": "Project-neutral runtime-log causal analysis, SceneGraph accessibility and remote-control review, and evidence-based release validation for Roku repositories.",
     "developerName": "Ebube Idam",
     "category": "Productivity",
     "capabilities": [
       "Interactive"
     ],
+    "websiteURL": "https://github.com/preciousidam/roku-codex-toolkit",
     "defaultPrompt": [
-      "Diagnose this Roku runtime failure.",
+      "Find the first causal failure in this Roku log.",
       "Review this Roku UI for remote-control accessibility.",
-      "Validate this Roku release."
+      "Validate this Roku release and separate pending hardware gates."
+    ],
+    "brandColor": "#49C6E5",
+    "composerIcon": "./assets/mark.png",
+    "logo": "./assets/mark.png",
+    "screenshots": [
+      "./assets/engineering-demo.png"
     ]
   }
 }

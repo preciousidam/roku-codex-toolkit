@@ -79,6 +79,9 @@ v0.1.0 established the public plugin baseline. v0.2.0 adds the npm delivery path
 
 The toolkit complements editor-oriented Roku tooling: it gives Codex bounded device operations, evidence-aware flow execution, and repository review workflows. It does not replace an editor, language server, debugger, packaging toolchain, or Roku's developer portal. See [the tooling comparison](docs/tooling-comparison.md).
 
+For the public feature matrix, plugin selection guide, capability inventory, and sanitized media, see
+[marketplace presentation](docs/marketplace.md).
+
 ## Security
 
 Do not commit Roku developer passwords, captured console logs, screenshots, or flow evidence. See [SECURITY.md](SECURITY.md) for reporting guidance.

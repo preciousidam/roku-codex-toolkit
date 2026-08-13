@@ -1,12 +1,14 @@
 {
   "name": "roku-device-toolkit",
   "version": "0.2.0",
-  "description": "Operate Roku development devices and verify app flows from Codex.",
+  "description": "Control Roku development devices and verify flows with explicit evidence.",
   "author": {
-    "name": "Ebube Idam"
+    "name": "Ebube Idam",
+    "url": "https://github.com/preciousidam"
   },
   "homepage": "https://github.com/preciousidam/roku-codex-toolkit",
   "repository": "https://github.com/preciousidam/roku-codex-toolkit",
+  "license": "Apache-2.0",
   "keywords": [
     "roku",
     "ecp",
@@ -18,17 +20,25 @@
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Roku Device Toolkit",
-    "shortDescription": "Operate and verify any Roku development app",
-    "longDescription": "Reusable Roku device controls, sideloading, screenshots, console capture, and evidence-backed flow verification for BrightScript and SceneGraph projects.",
+    "shortDescription": "Control Roku devices and verify flows with evidence",
+    "longDescription": "Project-neutral ECP controls, device queries, confirmed sideloading, screenshots, bounded console capture, and evidence-aware JSON flows for Roku development devices.",
     "developerName": "Ebube Idam",
     "category": "Productivity",
     "capabilities": [
       "Interactive",
       "Write"
     ],
+    "websiteURL": "https://github.com/preciousidam/roku-codex-toolkit",
     "defaultPrompt": [
-      "Connect to my Roku development device.",
-      "Verify this Roku app flow and collect evidence."
+      "Query my configured Roku and report device state.",
+      "Verify this Roku flow with explicit checkpoints.",
+      "Capture bounded Roku evidence without claiming a UI pass."
+    ],
+    "brandColor": "#9B7CFF",
+    "composerIcon": "./assets/mark.png",
+    "logo": "./assets/mark.png",
+    "screenshots": [
+      "./assets/device-demo.png"
     ]
   }
 }

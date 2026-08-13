@@ -19,6 +19,25 @@ if (process.platform === "win32" && !npmPrefix[0]) {
   throw new Error("npm_execpath is required to run packed-package tests on Windows.");
 }
 const packRoot = path.join(temporary, "source");
+const publicPngAssets = new Set([
+  "plugins/roku-device-toolkit/assets/device-demo.png",
+  "plugins/roku-device-toolkit/assets/mark.png",
+  "plugins/roku-engineering/assets/engineering-demo.png",
+  "plugins/roku-engineering/assets/mark.png",
+]);
+
+function isUnsafeArtifactName(name) {
+  return /\.(?:log|pyc|jpe?g)$/i.test(name) ||
+    (/\.png$/i.test(name) && !publicPngAssets.has(name)) ||
+    /(^|\/)(?:config|private-target)\.json$/.test(name);
+}
+
+for (const name of publicPngAssets) {
+  if (isUnsafeArtifactName(name)) throw new Error(`Public PNG asset was rejected: ${name}`);
+}
+for (const name of ["captured-screen.png", "captured-screen.PNG", "captured-screen.PnG"]) {
+  if (!isUnsafeArtifactName(name)) throw new Error(`Unsafe PNG fixture was accepted: ${name}`);
+}
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -80,8 +99,18 @@ try {
     ".agents/plugins/marketplace.json",
     "plugins/roku-device-toolkit/scripts/launch-mcp.mjs",
     "plugins/roku-device-toolkit/mcp/server.py",
+    "plugins/roku-device-toolkit/assets/device-demo.png",
+    "plugins/roku-device-toolkit/assets/mark.png",
     "plugins/roku-engineering/.codex-plugin/plugin.json",
+    "plugins/roku-engineering/assets/engineering-demo.png",
+    "plugins/roku-engineering/assets/mark.png",
     "docs/getting-started.md",
+    "docs/marketplace.md",
+    "docs/media/roku-device-toolkit-demo.svg",
+    "docs/media/roku-device-toolkit-mark.svg",
+    "docs/media/roku-engineering-demo.svg",
+    "docs/media/roku-engineering-mark.svg",
+    "docs/tooling-comparison.md",
     "docs/troubleshooting.md",
   ]) {
     if (!names.has(required)) throw new Error(`Packed tarball is missing ${required}`);
@@ -93,10 +122,19 @@ try {
     if (/^(tests|\.github)\//.test(name) || /(^|\/)(__pycache__|node_modules|evidence|artifacts)(\/|$)/.test(name)) {
       throw new Error(`Development-only path leaked into tarball: ${name}`);
     }
-    if (name.startsWith("docs/") && !["docs/getting-started.md", "docs/troubleshooting.md"].includes(name)) {
+    if (name.startsWith("docs/") && ![
+      "docs/getting-started.md",
+      "docs/marketplace.md",
+      "docs/media/roku-device-toolkit-demo.svg",
+      "docs/media/roku-device-toolkit-mark.svg",
+      "docs/media/roku-engineering-demo.svg",
+      "docs/media/roku-engineering-mark.svg",
+      "docs/tooling-comparison.md",
+      "docs/troubleshooting.md",
+    ].includes(name)) {
       throw new Error(`Unlisted documentation leaked into tarball: ${name}`);
     }
-    if (/\.(?:log|pyc|jpe?g|png)$/i.test(name) || /(^|\/)(?:config|private-target)\.json$/.test(name)) {
+    if (isUnsafeArtifactName(name)) {
       throw new Error(`Unsafe artifact leaked into tarball: ${name}`);
     }
   }
