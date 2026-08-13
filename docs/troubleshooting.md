@@ -11,8 +11,9 @@ addresses, screenshots, console output, or configuration contents into a public 
 
 ## Python is not found
 
-The toolkit requires Python 3.9 or newer. It discovers `python3`, then `python`, then the Windows
-launcher `py -3`; it does not require the command to be named `python3`.
+The toolkit requires Python 3.9 or newer. On Windows it probes `py -3`, `python`, then `python3`. On
+macOS and Linux it probes `python3`, `python`, then `py -3`. It uses the first candidate that reports
+a supported version, so it does not require the command to be named `python3`.
 
 Check the interpreter normally used by your platform:
 
@@ -81,7 +82,8 @@ Device queries use ECP on the local network. Verify that:
 
 - the configured target is a bare hostname or address, without `http://`, a port, or a path;
 - the computer and Roku are on the same trusted LAN and client isolation is not blocking peers;
-- **Control by mobile apps** is **Enabled** on the Roku; and
+- **Control by mobile apps > Network access** permits third-party local ECP requests (typically
+  **Permissive**; labels can vary by Roku OS version); and
 - local firewall policy permits the connection.
 
 Do not guess or scan device addresses. Confirm the address on the Roku or in the network's trusted

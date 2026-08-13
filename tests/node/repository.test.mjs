@@ -41,10 +41,13 @@ test("documentation links resolve and onboarding preserves public safety boundar
   assert.match(gettingStarted, /npx --yes roku-codex-toolkit@latest doctor/);
   assert.match(gettingStarted, /npx --yes roku-codex-toolkit@latest setup/);
   assert.match(gettingStarted, /ROKU_TOOLKIT_INTENTIONAL_MISSING_CHECKPOINT_7B2E/);
+  assert.match(gettingStarted, /run first-intentional-failure\.json/);
   assert.match(gettingStarted, /successful screenshot capture proves only/i);
   assert.match(gettingStarted, /physical Roku required/i);
+  assert.match(gettingStarted, /Network access.*Permissive/is);
   assert.doesNotMatch(gettingStarted, /(?:https?:\/\/)?(?:\d{1,3}\.){3}\d{1,3}/);
   assert.match(troubleshooting, /py -3/);
+  assert.match(troubleshooting, /On Windows it probes `py -3`, `python`, then `python3`/);
   assert.match(troubleshooting, /Windows command shims/);
   assert.match(troubleshooting, /port `8060`/);
   assert.match(troubleshooting, /port `8085`/);

@@ -56,10 +56,12 @@ Developer mode lets the device accept a development application, screenshots, an
 Sideloading replaces the one currently sideloaded application, so do it only when the device owner
 has approved the ZIP and replacement.
 
-For ECP remote-control actions, keep the computer and Roku on the same trusted local network and set
-**Settings > System > Advanced system settings > Control by mobile apps** to **Enabled**. Roku's
-[ECP documentation](https://developer.roku.com/dev/docs/external-control-api) describes the current
-device setting and protocol behavior.
+For ECP remote-control actions, keep the computer and Roku on the same trusted local network. Under
+**Settings > System > Advanced system settings > Control by mobile apps**, set **Network access** to
+a value that permits third-party local ECP requests—typically **Permissive**. Roku OS versions may
+use different labels, so consult Roku's
+[current ECP documentation](https://developer.roku.com/dev/docs/external-control-api) rather than
+weakening other network protections.
 
 If setup was run with `--skip-config`, start a new Codex task and ask:
 
@@ -149,7 +151,14 @@ Next run an intentionally failing checkpoint:
 }
 ```
 
-Save it as `first-intentional-failure.json` outside the repository and run it with the same request.
+Save it as `first-intentional-failure.json` outside the repository, then ask Codex:
+
+```text
+Using $roku-flow-verifier, run first-intentional-failure.json against my configured Roku. Store
+evidence in a new temporary directory, validate the generated report, and confirm that the query
+completed but its evidence checkpoint and overall flow failed. Do not claim visual verification.
+```
+
 The query action may complete successfully, but the checkpoint and overall flow must fail because
 the response does not contain the required marker. That distinction is the core evidence rule.
 
