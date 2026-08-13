@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   publish:
-    if: startsWith(github.event.release.tag_name, 'v')
+    if: ${{ startsWith(github.event.release.tag_name, 'v') && !github.event.release.prerelease }}
     runs-on: ubuntu-latest
     environment: npm
     permissions:
@@ -29,7 +29,9 @@ jobs:
           python-version: "3.13"
       - run: npm install --global npm@11.18.0
       - run: npm ci
-      - run: npm run verify:release -- "${{ github.event.release.tag_name }}"
+      - run: npm run verify:release -- "$RELEASE_TAG"
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
       - run: npm run validate
       - run: npm run test:package
       - run: npm publish --access public
