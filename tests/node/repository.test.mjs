@@ -154,6 +154,32 @@ test("flow schemas and examples expose stable public contracts", () => {
       ...baseReport,
       passed: false,
       verified: false,
+      screenshot_count: 1,
+      pending_visual_review: true,
+      verification_error: "Captured screenshots still require visual review.",
+      steps: [{
+        index: 1, action: "screenshot", checkpoint: false, passed: false,
+        status: "pending_visual_review", duration_seconds: 0,
+        artifact: "/tmp/screen.png", capture_succeeded: true, visual_review_required: true,
+      }],
+    },
+    {
+      ...baseReport,
+      passed: false,
+      verified: false,
+      screenshot_count: 1,
+      pending_visual_review: true,
+      verification_error: "Captured screenshots still require visual review.",
+      steps: [{
+        index: 1, action: "screenshot", checkpoint: false, passed: false,
+        status: "pending_visual_review", return_code: 1, duration_seconds: 0,
+        artifact: "/tmp/screen.png", capture_succeeded: true, visual_review_required: true,
+      }],
+    },
+    {
+      ...baseReport,
+      passed: false,
+      verified: false,
       dry_run: true,
       steps: [{
         index: 1, action: "launch", checkpoint: false, passed: false,
@@ -210,7 +236,7 @@ test("flow schemas and examples expose stable public contracts", () => {
     verification_error: "Captured screenshots still require visual review.",
     steps: [{
       index: 1, action: "screenshot", checkpoint: false, passed: false,
-      status: "pending_visual_review", duration_seconds: 0,
+      status: "pending_visual_review", return_code: 0, duration_seconds: 0,
       artifact: "/tmp/screen.png", capture_succeeded: true, visual_review_required: true,
     }],
   }, "pending screenshot report");

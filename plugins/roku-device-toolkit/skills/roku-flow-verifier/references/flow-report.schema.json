@@ -310,11 +310,12 @@
             "properties": { "status": { "const": "pending_visual_review" } }
           },
           "then": {
-            "required": ["artifact", "capture_succeeded", "visual_review_required"],
+            "required": ["artifact", "capture_succeeded", "return_code", "visual_review_required"],
             "properties": {
               "action": { "const": "screenshot" },
               "artifact": { "type": "string" },
               "capture_succeeded": { "const": true },
+              "return_code": { "const": 0 },
               "visual_review_required": { "const": true }
             }
           }
