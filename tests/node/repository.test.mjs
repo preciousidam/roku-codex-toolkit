@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { assertSchemaValid, compileSchema } from "./schema-validator.mjs";
 import {
   buildWindowsShimInvocation,
   commandStatus,
@@ -47,6 +48,319 @@ test("device plugin exposes the portable launcher", () => {
   assert.equal(config.mcpServers["roku-device"].command, "node");
 });
 
+test("flow schemas and examples expose stable public contracts", () => {
+  const references = path.join(pluginRoots[0], "skills", "roku-flow-verifier", "references");
+  const scenarioSchema = readJson(path.join(references, "flow-scenario.schema.json"));
+  const reportSchema = readJson(path.join(references, "flow-report.schema.json"));
+  const validateScenario = compileSchema(scenarioSchema);
+  const validateReport = compileSchema(reportSchema);
+  assert.equal(scenarioSchema.$schema, "https://json-schema.org/draft/2020-12/schema");
+  assert.match(scenarioSchema.$comment, /--dry-run/);
+  assert.equal(reportSchema.$schema, "https://json-schema.org/draft/2020-12/schema");
+  assert.deepEqual(
+    new Set(scenarioSchema.$defs.query.properties.kind.enum),
+    new Set(["info", "apps", "active-app", "player"]),
+  );
+  assert.deepEqual(
+    new Set(reportSchema.$defs.stepResult.properties.status.enum),
+    new Set(["passed", "failed", "skipped", "invalid", "pending_visual_review"]),
+  );
+  assert.ok(reportSchema.$defs.stepResult.required.includes("action"));
+  assert.ok(reportSchema.$defs.stepResult.required.includes("checkpoint"));
+  const baseReport = {
+    name: "flow", host: "roku.local", dry_run: false, verified: true,
+    checkpoint_count: 1, screenshot_count: 0, pending_visual_review: false,
+    passed: true,
+    steps: [{
+      index: 1, action: "query", checkpoint: true, passed: true,
+      status: "passed", return_code: 0, duration_seconds: 0,
+    }],
+  };
+  assertSchemaValid(validateReport, baseReport, "consistent passed report");
+  for (const invalid of [
+    { ...baseReport, dry_run: true },
+    { ...baseReport, verified: false },
+    { ...baseReport, pending_visual_review: true },
+    { ...baseReport, verification_error: "contradiction" },
+    { ...baseReport, name: "" },
+    { ...baseReport, name: "   " },
+    { ...baseReport, host: "" },
+    { ...baseReport, host: "   " },
+    { ...baseReport, passed: false },
+    { ...baseReport, pending_visual_review: undefined },
+    { ...baseReport, steps: [{ ...baseReport.steps[0], passed: false }] },
+    { ...baseReport, steps: [{ ...baseReport.steps[0], status: "failed" }] },
+    {
+      ...baseReport,
+      steps: [
+        baseReport.steps[0],
+        { ...baseReport.steps[0], index: 2, passed: false, status: "failed" },
+      ],
+    },
+    {
+      ...baseReport,
+      passed: false,
+      steps: [{ ...baseReport.steps[0], checkpoint: false, passed: false, status: "failed" }],
+    },
+    { ...baseReport, passed: false, dry_run: true },
+    {
+      ...baseReport,
+      passed: false,
+      pending_visual_review: false,
+      steps: [{
+        index: 1, action: "screenshot", checkpoint: false, passed: false,
+        status: "pending_visual_review", duration_seconds: 0,
+      }],
+    },
+    {
+      ...baseReport,
+      steps: [{ ...baseReport.steps[0], action: "screenshot" }],
+    },
+    {
+      ...baseReport,
+      steps: [{ ...baseReport.steps[0], action: "screenshot", checkpoint: false }],
+    },
+    { ...baseReport, passed: false, verified: false },
+    { ...baseReport, passed: false, verified: false, dry_run: true },
+    { ...baseReport, passed: false, verified: false, steps: [] },
+    { ...baseReport, checkpoint_count: 0 },
+    {
+      ...baseReport,
+      passed: false,
+      verified: false,
+      checkpoint_count: 0,
+      verification_error: "",
+    },
+    { ...baseReport, steps: [{ ...baseReport.steps[0], return_code: 1 }] },
+    { ...baseReport, steps: [{ ...baseReport.steps[0], return_code: undefined }] },
+    {
+      ...baseReport,
+      passed: false,
+      verified: false,
+      pending_visual_review: true,
+      steps: [{ ...baseReport.steps[0], passed: false, status: "failed" }],
+    },
+    {
+      ...baseReport,
+      passed: false,
+      verified: false,
+      pending_visual_review: true,
+      steps: [{
+        index: 1, action: "launch", checkpoint: false, passed: false,
+        status: "pending_visual_review", duration_seconds: 0,
+      }],
+    },
+    {
+      ...baseReport,
+      passed: false,
+      verified: false,
+      screenshot_count: 1,
+      pending_visual_review: true,
+      verification_error: "Captured screenshots still require visual review.",
+      steps: [{
+        index: 1, action: "screenshot", checkpoint: false, passed: false,
+        status: "pending_visual_review", duration_seconds: 0,
+        artifact: "/tmp/screen.png", capture_succeeded: true, visual_review_required: true,
+      }],
+    },
+    {
+      ...baseReport,
+      passed: false,
+      verified: false,
+      screenshot_count: 1,
+      pending_visual_review: true,
+      verification_error: "Captured screenshots still require visual review.",
+      steps: [{
+        index: 1, action: "screenshot", checkpoint: false, passed: false,
+        status: "pending_visual_review", return_code: 1, duration_seconds: 0,
+        artifact: "/tmp/screen.png", capture_succeeded: true, visual_review_required: true,
+      }],
+    },
+    {
+      ...baseReport,
+      passed: false,
+      verified: false,
+      dry_run: true,
+      steps: [{
+        index: 1, action: "launch", checkpoint: false, passed: false,
+        status: "failed", duration_seconds: 0,
+      }],
+    },
+    {
+      ...baseReport,
+      passed: false,
+      verified: false,
+      steps: [{
+        index: 1, action: "launch", checkpoint: false, passed: false,
+        status: "invalid", duration_seconds: 0,
+      }],
+    },
+    {
+      ...baseReport,
+      passed: false,
+      verified: false,
+      steps: [{
+        index: 1, action: "bogus", checkpoint: false, passed: false,
+        status: "failed", duration_seconds: 0,
+      }],
+    },
+    {
+      ...baseReport,
+      passed: false,
+      verified: false,
+      checkpoint_count: 0,
+      screenshot_count: 0,
+      pending_visual_review: true,
+      steps: [{
+        index: 1, action: "screenshot", checkpoint: false, passed: false,
+        status: "pending_visual_review", duration_seconds: 0,
+      }],
+    },
+    {
+      ...baseReport,
+      steps: [baseReport.steps[0], {
+        index: 2, action: null, checkpoint: false, passed: true,
+        status: "passed", duration_seconds: 0,
+      }],
+    },
+  ]) {
+    if (invalid.pending_visual_review === undefined) delete invalid.pending_visual_review;
+    assert.equal(validateReport(invalid), false, JSON.stringify(invalid));
+  }
+  assertSchemaValid(validateReport, {
+    ...baseReport,
+    passed: false,
+    verified: false,
+    screenshot_count: 1,
+    pending_visual_review: true,
+    verification_error: "Captured screenshots still require visual review.",
+    steps: [{
+      index: 1, action: "screenshot", checkpoint: false, passed: false,
+      status: "pending_visual_review", return_code: 0, duration_seconds: 0,
+      artifact: "/tmp/screen.png", capture_succeeded: true, visual_review_required: true,
+    }],
+  }, "pending screenshot report");
+  const pendingWithoutExplanation = {
+    ...baseReport,
+    passed: false,
+    screenshot_count: 1,
+    pending_visual_review: true,
+    steps: [{
+      index: 1, action: "query", checkpoint: true, passed: true,
+      status: "passed", return_code: 0, duration_seconds: 0,
+    }, {
+      index: 2, action: "screenshot", checkpoint: false, passed: false,
+      status: "pending_visual_review", return_code: 0, duration_seconds: 0,
+      artifact: "/tmp/screen.png", capture_succeeded: true, visual_review_required: true,
+    }],
+  };
+  assert.equal(validateReport(pendingWithoutExplanation), false);
+  for (const name of fs.readdirSync(path.join(root, "examples", "flow"))) {
+    const example = readJson(path.join(root, "examples", "flow", name));
+    assertSchemaValid(validateScenario, example, name);
+  }
+  for (const save of [
+    "../escape.jpg", "/tmp/output.jpg", "C:\\output.jpg", "report.json",
+    "./report.json", ".\\report.json", "././REPORT.JSON", ".//report.json",
+    ".\\\\REPORT.JSON", "report.jſon", "./REPORT.JſON", "./.", ".\\.", ".//.",
+    "query\u0000.xml", "screen\u0000.jpg",
+    "screen?.jpg", "screen<1>.jpg", "folder|name/screen.jpg", "folder/name. ",
+    "CON.jpg", "aux", "nested/PRN.xml", "nested\\LPT9.png",
+    "COM¹.png", "nested/COM².jpg", "nested\\LPT³.png",
+    "CONIN$.jpg", "CONOUT$.png", "CON .txt", "nested/PRN .xml",
+    "screen\uD800.png", "nested/screen\uDFFF.jpg",
+    "\u00a0",
+  ]) {
+    const invalid = {
+      steps: [{ action: "query", kind: "active-app", contains: "dev", save }],
+    };
+    assert.equal(validateScenario(invalid), false, save);
+  }
+  for (const save of [
+    "screen.jpg", "screen.JPEG", "screen.png", "screen.PNG", "./screen.png",
+    "nested/screens/screen-01.png", "nested\\screens\\screen_01.jpg",
+    ".screen.png", "capture\u2028one.png", "capture\u2029one.jpg",
+  ]) {
+    const valid = { steps: [{ action: "screenshot", save }] };
+    assertSchemaValid(validateScenario, valid, save);
+  }
+  for (const save of [
+    "screen.gif", "screen.bmp", "screen.png.tmp", "screen\u0000.jpg",
+    ".jpg", ".jpeg", ".png", "..jpg", "...png",
+    "captures/.png", "captures\\.jpg", "captures/..png", "captures\\...jpg",
+    "screen.png/", "screen.png/.", "screen.jpg\\", "screen.jpg\\.",
+  ]) {
+    const invalid = { steps: [{ action: "screenshot", save }] };
+    assert.equal(validateScenario(invalid), false, save);
+  }
+  for (const host of [
+    "roku.local", "roku.local.", "192.168.1.50", " roku.local ", "\tdevice.local\n",
+  ]) {
+    const valid = { host, steps: [{ action: "screenshot", save: "screen.png" }] };
+    assertSchemaValid(validateScenario, valid, host);
+  }
+  assertSchemaValid(validateScenario, {
+    host: null,
+    steps: [{ action: "screenshot", save: "screen.png" }],
+  }, "nullable host");
+  assertSchemaValid(validateScenario, {
+    name: "\uFEFF",
+    steps: [{ action: "screenshot", save: "screen.png" }],
+  }, "Python-nonblank byte order mark");
+  assertSchemaValid(validateScenario, {
+    name: "flow\u0000name",
+    steps: [
+      { action: "query", kind: "active-app", contains: "dev\u0000" },
+      { action: "screenshot", save: "screen.png" },
+    ],
+  }, "control characters in non-command metadata");
+  for (const host of [
+    "", "http://roku.local", "roku.local:8060", "roku.local/path",
+    "roku.local?query", "roku.local#fragment", "user@roku.local", "\u001c", "\u00a0",
+    "roku\u0000.local", "roku local", "roku\tlocal", "roku\u0001.local",
+    "[roku.local", "roku.local]", "roku_local", "-", ".", "roku..local",
+    "-roku.local", "roku-.local", ".roku.local",
+  ]) {
+    const invalid = { host, steps: [{ action: "screenshot", save: "screen.png" }] };
+    assert.equal(validateScenario(invalid), false, host);
+  }
+  for (const invalid of [
+    { name: "\u001c", steps: [{ action: "screenshot", save: "screen.png" }] },
+    { steps: [{ action: "query", kind: "active-app", contains: "\u001d" }] },
+    { steps: [{ action: "launch", channel_id: "\u001e" }, { action: "screenshot", save: "screen.png" }] },
+    { steps: [{ action: "press", keys: ["\u001f"] }, { action: "screenshot", save: "screen.png" }] },
+    { steps: [{ action: "launch", channel_id: "dev\u0000" }, { action: "screenshot", save: "screen.png" }] },
+    { steps: [{ action: "press", keys: ["Home\u0000"] }, { action: "screenshot", save: "screen.png" }] },
+    { steps: [{ action: "text", value: "hello\u0000" }, { action: "screenshot", save: "screen.png" }] },
+    { steps: [{ action: "launch", channel_id: "dev", content_id: "item\u0000" }, { action: "screenshot", save: "screen.png" }] },
+    { steps: [{ action: "launch", channel_id: "dev", media_type: "movie\u0000" }, { action: "screenshot", save: "screen.png" }] },
+    { steps: [{ action: "launch", channel_id: "dev\uD800" }, { action: "screenshot", save: "screen.png" }] },
+    { steps: [{ action: "press", keys: ["Home\uDFFF"] }, { action: "screenshot", save: "screen.png" }] },
+    { steps: [{ action: "text", value: "hello\uD800" }, { action: "screenshot", save: "screen.png" }] },
+    { steps: [{ action: "launch", channel_id: "dev", content_id: "item\uDFFF" }, { action: "screenshot", save: "screen.png" }] },
+    { steps: [{ action: "launch", channel_id: "dev", media_type: "movie\uD800" }, { action: "screenshot", save: "screen.png" }] },
+  ]) {
+    assert.equal(validateScenario(invalid), false, JSON.stringify(invalid));
+  }
+  assertSchemaValid(validateScenario, {
+    steps: [
+      { action: "launch", channel_id: "dev", content_id: null, media_type: null },
+      { action: "screenshot", save: "screen.png" },
+    ],
+  }, "nullable launch metadata");
+  for (const metadata of [
+    { content_id: 123 }, { content_id: {} }, { media_type: 123 }, { media_type: {} },
+  ]) {
+    const invalid = {
+      steps: [
+        { action: "launch", channel_id: "dev", ...metadata },
+        { action: "screenshot", save: "screen.png" },
+      ],
+    };
+    assert.equal(validateScenario(invalid), false, JSON.stringify(metadata));
+  }
+});
+
 test("npm metadata exposes a side-effect-free public CLI package", () => {
   const metadata = readJson(path.join(root, "package.json"));
   assert.equal(metadata.private, undefined);
@@ -57,7 +371,6 @@ test("npm metadata exposes a side-effect-free public CLI package", () => {
   assert.ok(!metadata.files.includes("bin/"));
   assert.ok(metadata.files.includes("bin/roku-codex-toolkit.mjs"));
   assert.ok(!metadata.files.includes("plugins/"));
-  assert.ok(metadata.files.every((name) => name !== "plugins/"));
   const trackedPluginFiles = execFileSync("git", ["ls-files", "--", "plugins"], {
     cwd: root,
     encoding: "utf8",

@@ -1,0 +1,349 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "flow-report.schema.json",
+  "title": "Roku Codex Toolkit flow report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name", "host", "dry_run", "verified", "checkpoint_count",
+    "screenshot_count", "passed", "steps"
+  ],
+  "properties": {
+    "name": { "type": "string", "pattern": "\\S" },
+    "host": { "type": "string", "pattern": "\\S" },
+    "dry_run": { "type": "boolean" },
+    "verified": { "type": "boolean" },
+    "checkpoint_count": { "type": "integer", "minimum": 0 },
+    "screenshot_count": { "type": "integer", "minimum": 0 },
+    "pending_visual_review": { "type": "boolean" },
+    "passed": { "type": "boolean" },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/stepResult" }
+    },
+    "verification_error": { "type": "string", "pattern": "\\S" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["checkpoint_count"],
+        "properties": { "checkpoint_count": { "const": 0 } }
+      },
+      "then": {
+        "required": ["verification_error"],
+        "properties": { "verification_error": { "type": "string", "pattern": "\\S" } }
+      }
+    },
+    {
+      "if": {
+        "required": ["passed"],
+        "properties": { "passed": { "const": true } }
+      },
+      "then": {
+        "not": {
+          "type": "object",
+          "properties": { "verification_error": {} },
+          "required": ["verification_error"]
+        },
+        "required": ["pending_visual_review"],
+        "properties": {
+          "dry_run": { "const": false },
+          "verified": { "const": true },
+          "pending_visual_review": { "const": false },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["passed"],
+              "properties": { "passed": { "const": true } }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["dry_run", "verified", "pending_visual_review", "steps"],
+        "properties": {
+          "dry_run": { "const": false },
+          "verified": { "const": true },
+          "pending_visual_review": { "const": false },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["passed"],
+              "properties": { "passed": { "const": true } }
+            }
+          }
+        }
+      },
+      "then": { "properties": { "passed": { "const": true } } }
+    },
+    {
+      "if": {
+        "required": ["verified"],
+        "properties": { "verified": { "const": true } }
+      },
+      "then": {
+        "properties": { "dry_run": { "const": false } },
+        "allOf": [
+          {
+            "properties": {
+              "steps": {
+                "type": "array",
+                "contains": {
+                  "type": "object",
+                  "required": ["checkpoint", "passed"],
+                  "properties": {
+                    "checkpoint": { "const": true },
+                    "passed": { "const": true }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "steps": {
+            "type": "array",
+            "contains": {
+              "type": "object",
+              "required": ["status"],
+              "properties": { "status": { "const": "pending_visual_review" } }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": ["pending_visual_review"],
+        "properties": { "pending_visual_review": { "const": true } }
+      }
+    },
+    {
+      "if": {
+        "required": ["pending_visual_review"],
+        "properties": { "pending_visual_review": { "const": true } }
+      },
+      "then": {
+        "required": ["verification_error"],
+        "properties": {
+          "verification_error": { "type": "string", "pattern": "\\S" },
+          "steps": {
+            "type": "array",
+            "contains": {
+              "type": "object",
+              "required": ["status"],
+              "properties": { "status": { "const": "pending_visual_review" } }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["dry_run"],
+        "properties": { "dry_run": { "const": true } }
+      },
+      "then": {
+        "properties": {
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["passed", "status"],
+              "properties": {
+                "passed": { "const": false },
+                "status": { "enum": ["skipped", "invalid"] }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["dry_run", "steps"],
+        "properties": {
+          "dry_run": { "const": false },
+          "steps": {
+            "type": "array",
+            "contains": {
+              "type": "object",
+              "required": ["checkpoint", "passed"],
+              "properties": {
+                "checkpoint": { "const": true },
+                "passed": { "const": true }
+              }
+            }
+          }
+        }
+      },
+      "then": { "properties": { "verified": { "const": true } } }
+    },
+    {
+      "if": {
+        "properties": {
+          "steps": {
+            "type": "array",
+            "contains": {
+              "type": "object",
+              "required": ["checkpoint"],
+              "properties": { "checkpoint": { "const": true } }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": { "checkpoint_count": { "type": "integer", "minimum": 1 } }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "steps": {
+            "type": "array",
+            "contains": {
+              "type": "object",
+              "required": ["action"],
+              "properties": { "action": { "const": "screenshot" } }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": { "screenshot_count": { "type": "integer", "minimum": 1 } }
+      }
+    }
+  ],
+  "$defs": {
+    "stepResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "index", "action", "checkpoint", "passed", "status", "duration_seconds"
+      ],
+      "properties": {
+        "index": { "type": "integer", "minimum": 1 },
+        "started_at": { "type": "number" },
+        "action": { "type": ["string", "null"] },
+        "checkpoint": { "type": "boolean" },
+        "passed": { "type": "boolean" },
+        "status": {
+          "enum": ["passed", "failed", "skipped", "invalid", "pending_visual_review"]
+        },
+        "return_code": { "type": "integer" },
+        "stderr": { "type": "string" },
+        "duration_seconds": { "type": "number", "minimum": 0 },
+        "artifact": { "type": "string" },
+        "capture_succeeded": { "type": "boolean" },
+        "visual_review_required": { "type": "boolean" },
+        "error": { "type": "string" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["action"],
+            "properties": {
+              "action": {
+                "not": {
+                  "enum": ["query", "launch", "press", "text", "screenshot", "pause"]
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "passed": { "const": false },
+              "status": { "const": "invalid" }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["passed"],
+            "properties": { "passed": { "const": true } }
+          },
+          "then": {
+            "required": ["return_code"],
+            "properties": {
+              "status": { "const": "passed" },
+              "return_code": { "const": 0 }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["status"],
+            "properties": { "status": { "const": "passed" } }
+          },
+          "then": { "properties": { "passed": { "const": true } } }
+        },
+        {
+          "if": {
+            "required": ["checkpoint"],
+            "properties": { "checkpoint": { "const": true } }
+          },
+          "then": { "properties": { "action": { "const": "query" } } }
+        },
+        {
+          "if": {
+            "required": ["action"],
+            "properties": { "action": { "const": "screenshot" } }
+          },
+          "then": {
+            "properties": {
+              "checkpoint": { "const": false },
+              "passed": { "const": false },
+              "status": { "not": { "const": "passed" } }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["status"],
+            "properties": { "status": { "const": "pending_visual_review" } }
+          },
+          "then": {
+            "required": ["artifact", "capture_succeeded", "return_code", "visual_review_required"],
+            "properties": {
+              "action": { "const": "screenshot" },
+              "artifact": { "type": "string" },
+              "capture_succeeded": { "const": true },
+              "return_code": { "const": 0 },
+              "visual_review_required": { "const": true }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["status"],
+            "properties": { "status": { "const": "invalid" } }
+          },
+          "then": {
+            "properties": { "error": { "type": "string" } },
+            "required": ["error"]
+          }
+        },
+        {
+          "if": {
+            "required": ["passed"],
+            "properties": { "passed": { "const": true } }
+          },
+          "then": {
+            "properties": {
+              "action": {
+                "enum": ["query", "launch", "press", "text", "pause"]
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

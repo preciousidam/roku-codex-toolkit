@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "flow-scenario.schema.json",
+  "title": "Roku Codex Toolkit flow scenario",
+  "$comment": "JSON Schema validates individual fields and structure. Run run_flow.py --dry-run for semantic preflight, including normalized cross-step artifact uniqueness.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["steps"],
+  "properties": {
+    "name": { "$ref": "#/$defs/nonBlankString" },
+    "host": {
+      "anyOf": [
+        { "$ref": "#/$defs/bareHost" },
+        { "type": "null" }
+      ]
+    },
+    "continue_on_failure": { "type": "boolean", "default": false },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "contains": {
+        "anyOf": [
+          {
+            "type": "object",
+            "required": ["action"],
+            "properties": { "action": { "const": "screenshot" } }
+          },
+          {
+            "type": "object",
+            "required": ["action", "contains"],
+            "properties": {
+              "action": { "const": "query" },
+              "contains": { "$ref": "#/$defs/nonBlankString" }
+            }
+          }
+        ]
+      },
+      "items": { "$ref": "#/$defs/step" }
+    }
+  },
+  "$defs": {
+    "nonBlankString": {
+      "type": "string",
+      "pattern": "[^\\u0009-\\u000D\\u001C-\\u0020\\u0085\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000]"
+    },
+    "commandNonBlankString": {
+      "allOf": [
+        { "$ref": "#/$defs/portableString" },
+        {
+          "type": "string",
+          "pattern": "[^\\u0009-\\u000D\\u001C-\\u0020\\u0085\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000]"
+        }
+      ]
+    },
+    "portableString": {
+      "type": "string",
+      "pattern": "^[^\\u0000\\uD800-\\uDFFF]*$"
+    },
+    "bareHost": {
+      "type": "string",
+      "pattern": "^[\\u0009-\\u000D\\u001C-\\u0020\\u0085\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000]*(?=.{1,253}[\\u0009-\\u000D\\u001C-\\u0020\\u0085\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000]*$)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*\\.?[\\u0009-\\u000D\\u001C-\\u0020\\u0085\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000]*$",
+      "description": "A bare IP address or hostname without a scheme, port, path, query, fragment, or user information."
+    },
+    "artifactPath": {
+      "type": "string",
+      "allOf": [
+        {
+          "pattern": "^(?=[\\s\\S]*[^\\u0009-\\u000D\\u001C-\\u0020\\u0085\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000])(?![\\\\/])(?![A-Za-z]:)(?!\\.(?:[\\\\/]+\\.)*[\\\\/]*$)(?!\\.\\.(?:[\\\\/]|$))(?![\\s\\S]*[\\\\/]\\.\\.(?:[\\\\/]|$))(?!(?:\\.[\\\\/]+)*[rR][eE][pP][oO][rR][tT]\\.[jJ][sS\\u017F][oO][nN](?:[\\\\/]|$))[\\s\\S]+$"
+        },
+        { "pattern": "^[^\\u0000-\\u001F\\uD800-\\uDFFF<>:\"|?*]+$" },
+        { "pattern": "^(?![\\s\\S]*(?:^|[\\\\/])(?!\\.(?:[\\\\/]|$))[^\\\\/]*[. ](?:[\\\\/]|$))[\\s\\S]+$" },
+        {
+          "pattern": "^(?![\\s\\S]*(?:^|[\\\\/])(?:[cC][oO][nN](?:[iI][nN]\\$|[oO][uU][tT]\\$)?|[pP][rR][nN]|[aA][uU][xX]|[nN][uU][lL]|[cC][oO][mM](?:[1-9]|\\u00B9|\\u00B2|\\u00B3)|[lL][pP][tT](?:[1-9]|\\u00B9|\\u00B2|\\u00B3))[ ]*(?:\\.[^\\\\/]*)?(?:[\\\\/]|$))[\\s\\S]+$"
+        }
+      ],
+      "description": "A relative path contained by the evidence directory. report.json is reserved."
+    },
+    "step": {
+      "oneOf": [
+        { "$ref": "#/$defs/query" },
+        { "$ref": "#/$defs/launch" },
+        { "$ref": "#/$defs/press" },
+        { "$ref": "#/$defs/text" },
+        { "$ref": "#/$defs/screenshot" },
+        { "$ref": "#/$defs/pause" }
+      ]
+    },
+    "query": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "kind"],
+      "properties": {
+        "action": { "const": "query" },
+        "kind": { "enum": ["info", "apps", "active-app", "player"] },
+        "contains": { "$ref": "#/$defs/nonBlankString" },
+        "save": { "$ref": "#/$defs/artifactPath" }
+      }
+    },
+    "launch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "channel_id"],
+      "properties": {
+        "action": { "const": "launch" },
+        "channel_id": { "$ref": "#/$defs/commandNonBlankString" },
+        "content_id": {
+          "anyOf": [{ "$ref": "#/$defs/portableString" }, { "type": "null" }]
+        },
+        "media_type": {
+          "anyOf": [{ "$ref": "#/$defs/portableString" }, { "type": "null" }]
+        }
+      }
+    },
+    "press": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "keys"],
+      "properties": {
+        "action": { "const": "press" },
+        "keys": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/commandNonBlankString" }
+        },
+        "delay": { "type": "number", "minimum": 0, "maximum": 10, "default": 0.35 }
+      }
+    },
+    "text": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "value"],
+      "properties": {
+        "action": { "const": "text" },
+        "value": { "$ref": "#/$defs/portableString" },
+        "delay": { "type": "number", "minimum": 0, "maximum": 10, "default": 0.05 }
+      }
+    },
+    "screenshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "save"],
+      "properties": {
+        "action": { "const": "screenshot" },
+        "save": {
+          "type": "string",
+          "allOf": [{ "$ref": "#/$defs/artifactPath" }],
+          "pattern": "(?:^|[\\\\/])(?=[^\\\\/]*[^.\\\\/][^\\\\/]*\\.(?:[jJ][pP](?:[eE])?[gG]|[pP][nN][gG])$)[^\\\\/]+\\.(?:[jJ][pP](?:[eE])?[gG]|[pP][nN][gG])$"
+        }
+      }
+    },
+    "pause": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action"],
+      "properties": {
+        "action": { "const": "pause" },
+        "seconds": { "type": "number", "minimum": 0, "maximum": 3600, "default": 0 }
+      }
+    }
+  }
+}

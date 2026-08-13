@@ -42,10 +42,15 @@ def is_verification_checkpoint(step: object) -> bool:
 
 def safe_artifact(root: Path, relative: str) -> Path:
     resolved_root = root.resolve()
-    relative_path = Path(relative)
+    portable_parts = relative.replace("\\", "/").split("/")
+    if portable_parts and portable_parts[0] == "":
+        raise ValueError(f"Artifact path must be relative to the evidence directory: {relative}")
+    if ".." in portable_parts:
+        raise ValueError(f"Artifact path must not contain parent-directory segments: {relative}")
+    relative_path = Path(*portable_parts)
     if relative_path.parts and relative_path.parts[0].casefold() == "report.json":
         raise ValueError("report.json is reserved for the flow report.")
-    candidate = (root / relative).resolve()
+    candidate = (root / relative_path).resolve()
     if candidate == resolved_root or candidate.is_dir():
         raise ValueError(f"Artifact path must resolve to a file: {relative}")
     if str(candidate).casefold() == str((root / "report.json").resolve()).casefold():
@@ -91,6 +96,10 @@ def bounded_pause(value: object) -> float:
     return seconds
 
 
+def elapsed_seconds(started: float) -> float:
+    return round(time.monotonic() - started, 3)
+
+
 def command_for(step: dict, host: str, evidence: Path) -> tuple[Optional[list[str]], Optional[Path]]:
     action = step.get("action")
     if action not in STEP_FIELDS:
@@ -123,7 +132,7 @@ def command_for(step: dict, host: str, evidence: Path) -> tuple[Optional[list[st
             if step.get(field) is not None:
                 if not isinstance(step[field], str):
                     raise ValueError(f"launch {field} must be a string when provided")
-                command += [option, step[field]]
+                command.append(f"{option}={step[field]}")
         command += ["--", channel]
         return command, None
     if action == "press":
@@ -143,6 +152,9 @@ def command_for(step: dict, host: str, evidence: Path) -> tuple[Optional[list[st
         return base + ["text", "--delay", str(delay), "--", step["value"]], None
     if action == "screenshot":
         name = str(step.get("save", ""))
+        portable_parts = name.replace("\\", "/").split("/")
+        if portable_parts[-1] in {"", "."}:
+            raise ValueError("screenshot save must name a file, not a trailing directory alias")
         if Path(name).suffix.lower() not in {".jpg", ".jpeg", ".png"}:
             raise ValueError("screenshot save must end in .jpg, .jpeg, or .png")
         capture_path = safe_artifact(evidence, name)
@@ -169,6 +181,13 @@ def main() -> None:
         raise SystemExit(
             f"Unknown scenario field(s): {', '.join(unknown_scenario_fields)}"
         )
+    if "name" in scenario and (
+        not isinstance(scenario["name"], str) or not scenario["name"].strip()
+    ):
+        raise SystemExit("Scenario name must be a non-empty string when provided.")
+    scenario_name = scenario.get("name", args.scenario.stem)
+    if not scenario_name.strip():
+        raise SystemExit("Scenario filename stem must be non-empty when name is omitted.")
     if not scenario["steps"]:
         raise SystemExit("Scenario must contain at least one verification step.")
     if "continue_on_failure" in scenario and not isinstance(scenario["continue_on_failure"], bool):
@@ -221,9 +240,10 @@ def main() -> None:
             })
         except Exception as error:
             prepared_steps.append((None, None, None))
+            invalid_action = step.get("action") if isinstance(step, dict) else None
             invalid_result = {
                 "index": index,
-                "action": step.get("action") if isinstance(step, dict) else None,
+                "action": invalid_action if isinstance(invalid_action, str) else None,
                 "checkpoint": is_verification_checkpoint(step),
                 "passed": False,
                 "status": "invalid",
@@ -242,7 +262,7 @@ def main() -> None:
         })
     if preflight_errors:
         report = {
-            "name": scenario.get("name", args.scenario.stem),
+            "name": scenario_name,
             "host": host,
             "dry_run": args.dry_run,
             "verified": False,
@@ -260,8 +280,9 @@ def main() -> None:
     results = []
     overall = True
     for index, step in enumerate(scenario["steps"], start=1):
-        started = time.time()
-        result = {"index": index, "started_at": started}
+        started_at = time.time()
+        elapsed_started = time.monotonic()
+        result = {"index": index, "started_at": started_at}
         try:
             result["action"] = step.get("action")
             result["checkpoint"] = is_verification_checkpoint(step)
@@ -303,7 +324,7 @@ def main() -> None:
                 ),
                 "return_code": completed.returncode,
                 "stderr": completed.stderr.strip(),
-                "duration_seconds": round(time.time() - started, 3),
+                "duration_seconds": elapsed_seconds(elapsed_started),
             })
         except Exception as error:
             passed = False
@@ -312,7 +333,7 @@ def main() -> None:
                 "passed": False,
                 "status": "invalid" if args.dry_run else "failed",
                 "error": str(error),
-                "duration_seconds": round(time.time() - started, 3),
+                "duration_seconds": elapsed_seconds(elapsed_started),
             })
         results.append(result)
         overall = overall and step_succeeded
@@ -328,7 +349,7 @@ def main() -> None:
         result.get("status") == "pending_visual_review" for result in results
     )
     report = {
-        "name": scenario.get("name", args.scenario.stem),
+        "name": scenario_name,
         "host": host,
         "dry_run": args.dry_run,
         "verified": verified,

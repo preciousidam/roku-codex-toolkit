@@ -22,6 +22,10 @@ def load(name, relative):
 config = load("roku_config_test", "plugins/roku-device-toolkit/scripts/roku_config.py")
 device = load("roku_device_test", "plugins/roku-device-toolkit/skills/roku-device-operator/scripts/roku_device.py")
 flow = load("roku_flow_test", "plugins/roku-device-toolkit/skills/roku-flow-verifier/scripts/run_flow.py")
+report_validator = load(
+    "roku_report_validator_test",
+    "plugins/roku-device-toolkit/skills/roku-flow-verifier/scripts/validate_flow_report.py",
+)
 analyzer = load("roku_log_test", "plugins/roku-engineering/skills/roku-runtime-log-analyzer/scripts/analyze_roku_log.py")
 server = load("roku_server_test", "plugins/roku-device-toolkit/mcp/server.py")
 
@@ -106,13 +110,80 @@ class FlowTests(unittest.TestCase):
     def test_artifacts_cannot_escape_or_replace_report(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            for relative in ("../escape.log", "report.json", "REPORT.JSON"):
+            for relative in (
+                "../escape.log", "captures/../screen.png", "captures\\..\\screen.png",
+                "report.json", "REPORT.JSON",
+            ):
                 with self.subTest(relative=relative), self.assertRaises(ValueError):
                     flow.safe_artifact(root, relative)
+
+    def test_artifact_backslashes_are_normalized_portably(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.assertEqual(
+                flow.safe_artifact(root, "nested\\screens\\screen.png"),
+                (root / "nested" / "screens" / "screen.png").resolve(),
+            )
+            self.assertEqual(
+                flow.safe_artifact(root, "nested/screens/screen.png"),
+                flow.safe_artifact(root, "nested\\screens\\screen.png"),
+            )
+
+    def test_flow_schema_enums_match_runtime_contract(self):
+        references = ROOT / "plugins/roku-device-toolkit/skills/roku-flow-verifier/references"
+        scenario = json.loads((references / "flow-scenario.schema.json").read_text())
+        report = json.loads((references / "flow-report.schema.json").read_text())
+        self.assertEqual(set(scenario["$defs"]["query"]["properties"]["kind"]["enum"]), flow.QUERY_KINDS)
+        schema_actions = {
+            item["$ref"].rsplit("/", 1)[-1]
+            for item in scenario["$defs"]["step"]["oneOf"]
+        }
+        self.assertEqual(schema_actions, set(flow.STEP_FIELDS))
+        statuses = report["$defs"]["stepResult"]["properties"]["status"]["enum"]
+        self.assertIn("pending_visual_review", statuses)
+
+    def test_elapsed_duration_uses_monotonic_clock(self):
+        with mock.patch.object(flow.time, "time", return_value=-1000), \
+             mock.patch.object(flow.time, "monotonic", return_value=12.75):
+            self.assertEqual(flow.elapsed_seconds(10), 2.75)
+
+    def test_launch_metadata_preserves_option_like_values(self):
+        command, artifact = flow.command_for(
+            {
+                "action": "launch",
+                "channel_id": "dev",
+                "content_id": "--preview",
+                "media_type": "-movie",
+            },
+            "roku.local",
+            Path("/tmp/evidence"),
+        )
+        self.assertIsNone(artifact)
+        self.assertIn("--content-id=--preview", command)
+        self.assertIn("--media-type=-movie", command)
+        self.assertNotIn("--content-id", command)
+        self.assertNotIn("--media-type", command)
 
     def test_screenshot_is_not_automatic_verification(self):
         self.assertFalse(flow.is_verification_checkpoint({"action": "screenshot", "save": "screen.jpg"}))
         self.assertTrue(flow.is_verification_checkpoint({"action": "query", "kind": "player", "contains": "play"}))
+
+    def test_screenshot_rejects_trailing_directory_aliases(self):
+        for save in ("screen.png/", "screen.png/.", "screen.jpg\\", "screen.jpg\\."):
+            with self.subTest(save=save), self.assertRaisesRegex(ValueError, "name a file"):
+                flow.command_for(
+                    {"action": "screenshot", "save": save},
+                    "roku.local",
+                    Path("/tmp/evidence"),
+                )
+
+    def test_report_indices_are_a_unique_sequence(self):
+        report_validator.validate_report_semantics({"steps": [{"index": 1}, {"index": 2}]})
+        for indices in ([2], [1, 1], [1, 3]):
+            with self.subTest(indices=indices), self.assertRaisesRegex(ValueError, "unique sequence"):
+                report_validator.validate_report_semantics(
+                    {"steps": [{"index": index} for index in indices]}
+                )
 
 
 class AnalyzerTests(unittest.TestCase):

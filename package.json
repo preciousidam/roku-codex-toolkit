@@ -22,8 +22,11 @@
     "plugins/roku-device-toolkit/skills/roku-device-operator/scripts/roku_device.py",
     "plugins/roku-device-toolkit/skills/roku-flow-verifier/SKILL.md",
     "plugins/roku-device-toolkit/skills/roku-flow-verifier/agents/openai.yaml",
+    "plugins/roku-device-toolkit/skills/roku-flow-verifier/references/flow-report.schema.json",
+    "plugins/roku-device-toolkit/skills/roku-flow-verifier/references/flow-scenario.schema.json",
     "plugins/roku-device-toolkit/skills/roku-flow-verifier/references/scenario-format.md",
     "plugins/roku-device-toolkit/skills/roku-flow-verifier/scripts/run_flow.py",
+    "plugins/roku-device-toolkit/skills/roku-flow-verifier/scripts/validate_flow_report.py",
     "plugins/roku-engineering/.codex-plugin/plugin.json",
     "plugins/roku-engineering/skills/roku-accessibility-reviewer/SKILL.md",
     "plugins/roku-engineering/skills/roku-accessibility-reviewer/agents/openai.yaml",
@@ -65,6 +68,10 @@
     "validate": "node scripts/validate-roku-toolkit.mjs"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=18",
+    "python": ">=3.9"
+  },
+  "devDependencies": {
+    "ajv": "^8.18.0"
   }
 }
