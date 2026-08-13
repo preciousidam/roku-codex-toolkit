@@ -1,6 +1,6 @@
 {
   "name": "roku-codex-toolkit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Codex plugins and cross-platform CLI tooling for Roku development, device automation, and evidence-aware flow verification.",
   "license": "Apache-2.0",
   "type": "module",
@@ -65,6 +65,7 @@
     "test:package": "node scripts/test-packed-package.mjs",
     "test:node": "node scripts/validate-roku-toolkit.mjs --node-only",
     "test:python": "node scripts/validate-roku-toolkit.mjs --python-only",
+    "verify:release": "node scripts/verify-release.mjs",
     "validate": "node scripts/validate-roku-toolkit.mjs"
   },
   "engines": {

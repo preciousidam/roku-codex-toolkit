@@ -17,7 +17,7 @@ The runtime is dependency-free; development validation uses the packages pinned 
 - Add focused tests for behavior changes. Prefer Python tests for device, flow, analyzer, and MCP logic; prefer Node tests for manifests, installation, launchers, and repository integration.
 - Preserve strict schemas, bounded external operations, cancellation, private artifacts, and evidence-based reporting.
 - Do not label a flow verified merely because commands or screenshots completed.
-- Update `docs/v0.1.0.md` when changing a compatibility surface or release boundary.
+- Update the current versioned release-boundary document when changing a compatibility surface or release boundary.
 
 Physical-device testing should record host OS, Roku model, firmware, scenario, and artifacts, and must distinguish observed facts from inferences. Never commit captured evidence.
 

@@ -1,6 +1,6 @@
 {
   "name": "roku-device-toolkit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Operate Roku development devices and verify app flows from Codex.",
   "author": {
     "name": "Ebube Idam"
