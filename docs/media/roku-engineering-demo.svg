@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">Sanitized Roku Engineering terminal demo</title>
+  <desc id="desc">Synthetic terminal output showing log triage, accessibility review, and release gates.</desc>
+  <rect width="1200" height="675" fill="#07131C"/>
+  <rect x="42" y="42" width="1116" height="591" rx="24" fill="#0D1D2A" stroke="#24485F" stroke-width="3"/>
+  <circle cx="82" cy="80" r="9" fill="#FF6B8B"/><circle cx="112" cy="80" r="9" fill="#FFD166"/><circle cx="142" cy="80" r="9" fill="#73E2A7"/>
+  <text x="600" y="88" text-anchor="middle" fill="#82DDF2" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="22">Roku Engineering · sanitized fixture</text>
+  <g font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="24">
+    <text x="78" y="160" fill="#49C6E5">›</text><text x="108" y="160" fill="#F7FBFF">diagnose fixture-console.log</text>
+    <text x="78" y="209" fill="#73E2A7">cause</text><text x="174" y="209" fill="#D6E5ED">first causal failure isolated before repeats</text>
+    <text x="78" y="287" fill="#49C6E5">›</text><text x="108" y="287" fill="#F7FBFF">review remote-control accessibility</text>
+    <text x="78" y="336" fill="#FFD166">review</text><text x="190" y="336" fill="#D6E5ED">focus order and Back behavior need evidence</text>
+    <text x="78" y="414" fill="#49C6E5">›</text><text x="108" y="414" fill="#F7FBFF">validate release readiness</text>
+    <text x="78" y="463" fill="#73E2A7">host gates</text><text x="230" y="463" fill="#D6E5ED">passed</text>
+    <text x="78" y="503" fill="#FFD166">hardware</text><text x="206" y="503" fill="#D6E5ED">pending — not inferred from CI</text>
+  </g>
+  <text x="1122" y="608" text-anchor="end" fill="#658092" font-family="ui-sans-serif, system-ui, sans-serif" font-size="18">Sample output · no private log or device capture</text>
+</svg>
