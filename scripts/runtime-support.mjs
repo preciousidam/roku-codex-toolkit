@@ -1,0 +1,75 @@
+import { spawnSync } from "node:child_process";
+
+export const pythonCandidates = process.platform === "win32"
+  ? [{ command: "py", args: ["-3"] }, { command: "python", args: [] }, { command: "python3", args: [] }]
+  : [{ command: "python3", args: [] }, { command: "python", args: [] }, { command: "py", args: ["-3"] }];
+
+export function requireSupportedNode() {
+  const major = Number(process.versions.node.split(".")[0]);
+  if (!Number.isInteger(major) || major < 18) {
+    throw new Error(`Node.js 18 or newer is required; found ${process.version}.`);
+  }
+}
+
+export function buildWindowsShimInvocation(command, args) {
+  const values = [command, ...args].map(String);
+  const environment = Object.fromEntries(values.map((value, index) => [
+    `ROKU_TOOLKIT_SHIM_${index}`,
+    value,
+  ]));
+  const argumentList = values.slice(1).map((_, index) => `$env:ROKU_TOOLKIT_SHIM_${index + 1}`).join(", ");
+  // The script is fixed; all user-controlled values remain in the child
+  // environment. PowerShell invokes .cmd shims and splats the arguments
+  // without reparsing percent signs or shell metacharacters as command text.
+  const script = `$rokuToolkitArgs = @(${argumentList}); & $env:ROKU_TOOLKIT_SHIM_0 @rokuToolkitArgs`;
+  return { script, environment };
+}
+
+export function commandStatus(command, args, options = {}) {
+  const useWindowsShim = process.platform === "win32" && options.windowsShim;
+  const executable = useWindowsShim ? "powershell.exe" : command;
+  const shim = useWindowsShim ? buildWindowsShimInvocation(command, args) : undefined;
+  const executableArgs = useWindowsShim
+    ? ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", shim.script]
+    : args;
+  const { windowsShim: _windowsShim, ...spawnOptions } = options;
+  return spawnSync(executable, executableArgs, {
+    encoding: "utf8",
+    ...spawnOptions,
+    ...(useWindowsShim ? { env: { ...process.env, ...spawnOptions.env, ...shim.environment } } : {}),
+  });
+}
+
+export function findPython() {
+  return pythonCandidates.find(({ command, args }) => {
+    const result = commandStatus(command, [
+      ...args,
+      "-c",
+      "import sys; raise SystemExit(0 if sys.version_info >= (3, 9) else 1)",
+    ], { timeout: 10_000 });
+    return !result.error && result.status === 0;
+  });
+}
+
+export function requirePython() {
+  const python = findPython();
+  if (!python) {
+    throw new Error(
+      "Python 3.9 or newer is required. Install a supported Python interpreter and ensure " +
+      "python3, python, or py -3 is available on PATH.",
+    );
+  }
+  return python;
+}
+
+export function commandAvailable(command, args = ["--version"]) {
+  const direct = commandStatus(command, args, { timeout: 10_000 });
+  if (!direct.error && direct.status === 0) return true;
+  if (process.platform !== "win32") return false;
+
+  // Windows can execute .exe files directly, while npm-installed .cmd/.bat
+  // launchers require cmd.exe. Keep that shell fallback out of the normal
+  // executable path so tools such as Git are detected without cmd parsing.
+  const shim = commandStatus(command, args, { timeout: 10_000, windowsShim: true });
+  return !shim.error && shim.status === 0;
+}

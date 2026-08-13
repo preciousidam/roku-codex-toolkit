@@ -1,17 +1,70 @@
 {
   "name": "roku-codex-toolkit",
   "version": "0.1.0",
-  "private": true,
+  "description": "Codex plugins and cross-platform CLI tooling for Roku development, device automation, and evidence-aware flow verification.",
   "license": "Apache-2.0",
   "type": "module",
+  "bin": {
+    "roku-codex-toolkit": "./bin/roku-codex-toolkit.mjs"
+  },
+  "files": [
+    ".agents/plugins/marketplace.json",
+    "bin/roku-codex-toolkit.mjs",
+    "plugins/roku-device-toolkit/.codex-plugin/plugin.json",
+    "plugins/roku-device-toolkit/.mcp.json",
+    "plugins/roku-device-toolkit/mcp/server.py",
+    "plugins/roku-device-toolkit/scripts/launch-mcp.mjs",
+    "plugins/roku-device-toolkit/scripts/roku_artifacts.py",
+    "plugins/roku-device-toolkit/scripts/roku_config.py",
+    "plugins/roku-device-toolkit/skills/roku-device-operator/SKILL.md",
+    "plugins/roku-device-toolkit/skills/roku-device-operator/agents/openai.yaml",
+    "plugins/roku-device-toolkit/skills/roku-device-operator/references/device-interfaces.md",
+    "plugins/roku-device-toolkit/skills/roku-device-operator/scripts/roku_device.py",
+    "plugins/roku-device-toolkit/skills/roku-flow-verifier/SKILL.md",
+    "plugins/roku-device-toolkit/skills/roku-flow-verifier/agents/openai.yaml",
+    "plugins/roku-device-toolkit/skills/roku-flow-verifier/references/scenario-format.md",
+    "plugins/roku-device-toolkit/skills/roku-flow-verifier/scripts/run_flow.py",
+    "plugins/roku-engineering/.codex-plugin/plugin.json",
+    "plugins/roku-engineering/skills/roku-accessibility-reviewer/SKILL.md",
+    "plugins/roku-engineering/skills/roku-accessibility-reviewer/agents/openai.yaml",
+    "plugins/roku-engineering/skills/roku-accessibility-reviewer/references/review-checklist.md",
+    "plugins/roku-engineering/skills/roku-release-validator/SKILL.md",
+    "plugins/roku-engineering/skills/roku-release-validator/agents/openai.yaml",
+    "plugins/roku-engineering/skills/roku-release-validator/references/release-gates.md",
+    "plugins/roku-engineering/skills/roku-runtime-log-analyzer/SKILL.md",
+    "plugins/roku-engineering/skills/roku-runtime-log-analyzer/agents/openai.yaml",
+    "plugins/roku-engineering/skills/roku-runtime-log-analyzer/references/causal-triage.md",
+    "plugins/roku-engineering/skills/roku-runtime-log-analyzer/scripts/analyze_roku_log.py",
+    "scripts/doctor-roku-toolkit.mjs",
+    "scripts/runtime-support.mjs",
+    "scripts/setup-roku-toolkit.mjs",
+    "scripts/validate-install.mjs",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/preciousidam/roku-codex-toolkit.git"
+  },
+  "homepage": "https://github.com/preciousidam/roku-codex-toolkit#readme",
+  "bugs": {
+    "url": "https://github.com/preciousidam/roku-codex-toolkit/issues"
+  },
+  "keywords": ["roku", "codex", "brightscript", "scenegraph", "mcp", "device-testing"],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "setup": "node scripts/setup-roku-toolkit.mjs",
+    "doctor": "node scripts/doctor-roku-toolkit.mjs",
+    "validate:install": "node scripts/validate-install.mjs",
+    "test:package": "node scripts/test-packed-package.mjs",
     "test:node": "node scripts/validate-roku-toolkit.mjs --node-only",
     "test:python": "node scripts/validate-roku-toolkit.mjs --python-only",
     "validate": "node scripts/validate-roku-toolkit.mjs"
   },
   "engines": {
-    "node": ">=18",
-    "python": ">=3.9"
+    "node": ">=18"
   }
 }

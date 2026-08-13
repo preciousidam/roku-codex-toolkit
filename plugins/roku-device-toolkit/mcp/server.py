@@ -21,6 +21,7 @@ from typing import Any, Optional
 
 
 ROOT = Path(__file__).resolve().parents[1]
+PLUGIN_VERSION = json.loads((ROOT / ".codex-plugin/plugin.json").read_text(encoding="utf-8"))["version"]
 DEVICE_TOOL = ROOT / "skills/roku-device-operator/scripts/roku_device.py"
 FLOW_TOOL = ROOT / "skills/roku-flow-verifier/scripts/run_flow.py"
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -630,7 +631,7 @@ def handle(message: dict[str, Any]) -> Optional[dict[str, Any]]:
         result = {
             "protocolVersion": PROTOCOL_VERSION,
             "capabilities": {"tools": {"listChanged": False}},
-            "serverInfo": {"name": "roku-device-toolkit", "version": "0.1.0"},
+            "serverInfo": {"name": "roku-device-toolkit", "version": PLUGIN_VERSION},
         }
     elif method == "ping":
         result = {}

@@ -6,3 +6,5 @@ __pycache__/
 artifacts/
 evidence/
 *.log
+node_modules/
+*.tgz
