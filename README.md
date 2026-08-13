@@ -38,6 +38,10 @@ npx roku-codex-toolkit doctor
 npx roku-codex-toolkit setup
 ```
 
+For a clean first installation, device setup, and an evidence-aware first flow, follow the
+[getting-started tutorial](docs/getting-started.md). Common environment and connectivity failures
+are covered in [troubleshooting](docs/troubleshooting.md).
+
 Python 3.9+ and Git remain external requirements; the npm package bundles neither. `doctor` checks Node, Python, Git, and Codex. `setup` completes those runtime checks before changing Codex configuration, then registers the matching versioned Git tag as the durable marketplace source. The transient `npx` cache is never registered. Use `--skip-config` to install the plugins without prompting for a Roku target.
 
 `setup` intentionally refuses to replace an existing marketplace or alter orphaned toolkit plugin state. Codex does not currently expose enough information to reconstruct a version-pinned marketplace safely after an interrupted replacement.

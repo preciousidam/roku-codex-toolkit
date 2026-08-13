@@ -81,6 +81,8 @@ try {
     "plugins/roku-device-toolkit/scripts/launch-mcp.mjs",
     "plugins/roku-device-toolkit/mcp/server.py",
     "plugins/roku-engineering/.codex-plugin/plugin.json",
+    "docs/getting-started.md",
+    "docs/troubleshooting.md",
   ]) {
     if (!names.has(required)) throw new Error(`Packed tarball is missing ${required}`);
   }
@@ -88,8 +90,11 @@ try {
     if ((name.startsWith("plugins/") || name.startsWith("bin/")) && !explicitlyAllowedFiles.has(name)) {
       throw new Error(`File is outside the explicit package inventory: ${name}`);
     }
-    if (/^(tests|\.github|docs)\//.test(name) || /(^|\/)(__pycache__|node_modules|evidence|artifacts)(\/|$)/.test(name)) {
+    if (/^(tests|\.github)\//.test(name) || /(^|\/)(__pycache__|node_modules|evidence|artifacts)(\/|$)/.test(name)) {
       throw new Error(`Development-only path leaked into tarball: ${name}`);
+    }
+    if (name.startsWith("docs/") && !["docs/getting-started.md", "docs/troubleshooting.md"].includes(name)) {
+      throw new Error(`Unlisted documentation leaked into tarball: ${name}`);
     }
     if (/\.(?:log|pyc|jpe?g|png)$/i.test(name) || /(^|\/)(?:config|private-target)\.json$/.test(name)) {
       throw new Error(`Unsafe artifact leaked into tarball: ${name}`);

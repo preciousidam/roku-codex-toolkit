@@ -10,6 +10,8 @@
   "files": [
     ".agents/plugins/marketplace.json",
     "bin/roku-codex-toolkit.mjs",
+    "docs/getting-started.md",
+    "docs/troubleshooting.md",
     "plugins/roku-device-toolkit/.codex-plugin/plugin.json",
     "plugins/roku-device-toolkit/.mcp.json",
     "plugins/roku-device-toolkit/mcp/server.py",
