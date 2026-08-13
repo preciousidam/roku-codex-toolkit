@@ -44,8 +44,9 @@ The 13 Roku Device Toolkit MCP tools are:
 - Python 3.9 or newer
 - Git for version-pinned marketplace installation
 - A Roku on the same trusted local network for device operations
-- Developer mode and a separately supplied developer credential for screenshots, console capture,
-  and sideloading
+- Developer mode for screenshots, BrightScript console capture, and sideloading
+- A separately supplied developer credential for authenticated screenshot and sideload operations;
+  console capture connects directly to the developer-mode console and does not use that credential
 
 Host CI runs on macOS, Linux, and Windows with the supported Node and Python versions. That validates
 host-side portability; it does not claim physical Roku coverage from every host. A completed action
