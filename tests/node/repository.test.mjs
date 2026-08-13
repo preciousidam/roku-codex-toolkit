@@ -91,8 +91,8 @@ test("Windows shim arguments use fixed environment placeholders", () => {
     ["plugin", "100% ready", "%PATH%"],
   );
   assert.equal(
-    invocation.commandLine,
-    '\"\"%ROKU_TOOLKIT_SHIM_0%\" \"%ROKU_TOOLKIT_SHIM_1%\" \"%ROKU_TOOLKIT_SHIM_2%\" \"%ROKU_TOOLKIT_SHIM_3%\"\"',
+    invocation.script,
+    "$rokuToolkitArgs = @($env:ROKU_TOOLKIT_SHIM_1, $env:ROKU_TOOLKIT_SHIM_2, $env:ROKU_TOOLKIT_SHIM_3); & $env:ROKU_TOOLKIT_SHIM_0 @rokuToolkitArgs",
   );
   assert.deepEqual(invocation.environment, {
     ROKU_TOOLKIT_SHIM_0: "C:\\work & tools\\codex.cmd",
