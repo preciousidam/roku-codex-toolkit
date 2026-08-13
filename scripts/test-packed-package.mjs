@@ -161,6 +161,7 @@ try {
     ...packageTestEnv,
     PATH: `${fakeBin}${delimiter}${process.env.PATH ?? ""}`,
     FAKE_CODEX_LOG: commandLog,
+    FAKE_INSTALLED: "",
   };
   run(process.execPath, [cli, "doctor"], { cwd: temporary, env: fakeEnvironment });
   fs.rmSync(commandLog, { force: true });
@@ -219,137 +220,58 @@ try {
   }
 
   fs.writeFileSync(commandLog, "");
-  const failedUpgrade = runExpectFailure(process.execPath, [cli, "setup", "--skip-config"], {
-    cwd: temporary,
-    env: { ...fakeEnvironment, FAKE_EXISTING: "1", FAIL_REMOTE: "1" },
-  });
-  if (!`${failedUpgrade.stdout}\n${failedUpgrade.stderr}`.includes("Adding the Roku Codex Toolkit marketplace")) {
-    throw new Error("Failed marketplace replacement did not report its error.");
-  }
-  const rollbackCalls = fs.readFileSync(commandLog, "utf8").trim().split(/\r?\n/).map(JSON.parse);
-  if (!rollbackCalls.some((args) => args.join(" ") === "plugin marketplace add /previous")) {
-    throw new Error("Failed marketplace replacement did not restore the previous source.");
-  }
-  if (rollbackCalls.filter((args) => args[0] === "plugin" && args[1] === "add").length !== 2) {
-    throw new Error("Failed marketplace replacement did not restore both plugins.");
-  }
-
-  fs.writeFileSync(commandLog, "");
-  const marketplaceRemovalFailureMarker = path.join(temporary, "failed-marketplace-removal");
-  const failedRemoval = runExpectFailure(process.execPath, [cli, "setup", "--skip-config"], {
-    cwd: temporary,
-    env: {
-      ...fakeEnvironment,
-      FAKE_EXISTING: "1",
-      FAIL_MARKETPLACE_REMOVE: marketplaceRemovalFailureMarker,
-    },
-  });
-  if (!`${failedRemoval.stdout}\n${failedRemoval.stderr}`.includes("Removing the existing Roku Codex Toolkit marketplace")) {
-    throw new Error("Failed marketplace removal did not report its error.");
-  }
-  const removalRollbackCalls = fs.readFileSync(commandLog, "utf8").trim().split(/\r?\n/).map(JSON.parse);
-  if (!removalRollbackCalls.some((args) => args.join(" ") === "plugin marketplace add /previous")) {
-    throw new Error("Failed marketplace removal did not restore the previous source.");
-  }
-  if (removalRollbackCalls.filter((args) => args[0] === "plugin" && args[1] === "add").length !== 2) {
-    throw new Error("Failed marketplace removal did not restore both previous plugins.");
-  }
-
-  fs.writeFileSync(commandLog, "");
-  const enabledFakeSource = fs.readFileSync(fakeScript, "utf8");
-  fs.writeFileSync(fakeScript, enabledFakeSource.replace("installed: true", "installed: true, enabled: false"));
-  const disabledSetup = runExpectFailure(process.execPath, [cli, "setup", "--skip-config"], {
+  const existingSetup = runExpectFailure(process.execPath, [cli, "setup", "--skip-config"], {
     cwd: temporary,
     env: { ...fakeEnvironment, FAKE_EXISTING: "1" },
   });
-  fs.writeFileSync(fakeScript, enabledFakeSource);
-  if (!`${disabledSetup.stdout}\n${disabledSetup.stderr}`.includes("disabled plugins")) {
-    throw new Error("Setup did not explain why disabled plugin state cannot be replaced safely.");
+  if (!`${existingSetup.stdout}\n${existingSetup.stderr}`.includes("already registered")) {
+    throw new Error("Setup did not explain that an existing marketplace was left unchanged.");
   }
-  const disabledCalls = fs.readFileSync(commandLog, "utf8").trim().split(/\r?\n/).map(JSON.parse);
-  if (disabledCalls.some((args) => args[0] === "plugin" && (
+  const existingCalls = fs.readFileSync(commandLog, "utf8").trim().split(/\r?\n/).map(JSON.parse);
+  if (existingCalls.some((args) => args[0] === "plugin" && (
     ["add", "remove"].includes(args[1]) ||
     (args[1] === "marketplace" && ["add", "remove"].includes(args[2]))
   ))) {
-    throw new Error("Setup changed Codex state after finding a disabled toolkit plugin.");
+    throw new Error("Setup mutated an existing marketplace or plugin state.");
   }
 
   fs.writeFileSync(commandLog, "");
-  fs.writeFileSync(fakeScript, enabledFakeSource.replace("installed: true", "installed: true, enabled: false"));
-  const orphanedDisabledSetup = runExpectFailure(process.execPath, [cli, "setup", "--skip-config"], {
+  const orphanedSetup = runExpectFailure(process.execPath, [cli, "setup", "--skip-config"], {
+    cwd: temporary,
+    env: { ...fakeEnvironment, FAKE_INSTALLED: "roku-device-toolkit" },
+  });
+  if (!`${orphanedSetup.stdout}\n${orphanedSetup.stderr}`.includes("orphaned Roku Codex Toolkit plugin state")) {
+    throw new Error("Setup did not reject preexisting orphaned plugin state.");
+  }
+  const orphanedCalls = fs.readFileSync(commandLog, "utf8").trim().split(/\r?\n/).map(JSON.parse);
+  if (!orphanedCalls.some((args) => args.join(" ") === "plugin marketplace remove roku-codex-toolkit")) {
+    throw new Error("Setup did not remove its temporary marketplace after finding orphaned state.");
+  }
+  if (orphanedCalls.some((args) => args[0] === "plugin" && ["add", "remove"].includes(args[1]))) {
+    throw new Error("Setup changed preexisting orphaned plugin state.");
+  }
+
+  fs.writeFileSync(commandLog, "");
+  const normalFakeSource = fs.readFileSync(fakeScript, "utf8");
+  fs.writeFileSync(fakeScript, normalFakeSource.replace(
+    'if (args.join(" ") === "plugin list --json") {',
+    'if (args.join(" ") === "plugin list --json") { process.exit(1); }\nif (false) {',
+  ));
+  const failedOrphanInspection = runExpectFailure(process.execPath, [cli, "setup", "--skip-config"], {
     cwd: temporary,
     env: fakeEnvironment,
   });
-  fs.writeFileSync(fakeScript, enabledFakeSource);
-  if (!`${orphanedDisabledSetup.stdout}\n${orphanedDisabledSetup.stderr}`.includes("disabled orphaned plugins")) {
-    throw new Error("Setup did not reject a disabled orphaned toolkit plugin.");
+  fs.writeFileSync(fakeScript, normalFakeSource);
+  if (!`${failedOrphanInspection.stdout}\n${failedOrphanInspection.stderr}`.includes("Inspecting installed Roku Codex Toolkit plugins")) {
+    throw new Error("A failed orphan-state inspection did not report its error.");
   }
-  const orphanedDisabledCalls = fs.readFileSync(commandLog, "utf8").trim().split(/\r?\n/).map(JSON.parse);
-  if (!orphanedDisabledCalls.some((args) => args.join(" ") === "plugin marketplace remove roku-codex-toolkit")) {
-    throw new Error("Setup did not remove the temporary marketplace after finding a disabled orphaned plugin.");
-  }
-  if (orphanedDisabledCalls.some((args) => args[0] === "plugin" && ["add", "remove"].includes(args[1]))) {
-    throw new Error("Setup changed orphaned plugin state after finding it disabled.");
-  }
-
-  fs.writeFileSync(commandLog, "");
-  runExpectFailure(process.execPath, [cli, "setup", "--skip-config"], {
-    cwd: temporary,
-    env: {
-      ...fakeEnvironment,
-      FAKE_EXISTING: "1",
-      FAKE_INSTALLED: "roku-device-toolkit",
-      FAIL_REMOTE: "1",
-    },
-  });
-  const partialRollbackCalls = fs.readFileSync(commandLog, "utf8").trim().split(/\r?\n/).map(JSON.parse);
-  const restoredPlugins = partialRollbackCalls
-    .filter((args) => args[0] === "plugin" && args[1] === "add")
-    .map((args) => args[2]);
-  if (restoredPlugins.length !== 1 || restoredPlugins[0] !== "roku-device-toolkit@roku-codex-toolkit") {
-    throw new Error("Marketplace rollback did not preserve the prior partial plugin installation set.");
+  const failedInspectionCalls = fs.readFileSync(commandLog, "utf8").trim().split(/\r?\n/).map(JSON.parse);
+  if (!failedInspectionCalls.some((args) => args.join(" ") === "plugin marketplace remove roku-codex-toolkit")) {
+    throw new Error("A failed orphan-state inspection left the temporary marketplace registered.");
   }
 
   fs.writeFileSync(commandLog, "");
   const pluginFailureMarker = path.join(temporary, "failed-second-plugin");
-  runExpectFailure(process.execPath, [cli, "setup", "--skip-config"], {
-    cwd: temporary,
-    env: { ...fakeEnvironment, FAKE_EXISTING: "1", FAIL_SECOND_PLUGIN: pluginFailureMarker },
-  });
-  const pluginRollbackCalls = fs.readFileSync(commandLog, "utf8").trim().split(/\r?\n/).map(JSON.parse);
-  if (!pluginRollbackCalls.some((args) => args.join(" ") === "plugin marketplace add /previous")) {
-    throw new Error("Plugin installation failure did not restore the previous marketplace.");
-  }
-  if (pluginRollbackCalls.filter((args) => args[0] === "plugin" && args[1] === "add").length !== 4) {
-    throw new Error("Plugin installation failure did not restore both previous plugins.");
-  }
-
-  fs.writeFileSync(commandLog, "");
-  fs.rmSync(pluginFailureMarker, { force: true });
-  const cleanupFailureSource = enabledFakeSource.replace(
-    "if (process.env.FAIL_REMOTE",
-    "if (process.env.FAIL_REMOVE === \"1\" && args[0] === \"plugin\" && args[1] === \"remove\") process.exit(1);\nif (process.env.FAIL_REMOTE",
-  );
-  fs.writeFileSync(fakeScript, cleanupFailureSource);
-  const cleanupFailure = runExpectFailure(process.execPath, [cli, "setup", "--skip-config"], {
-    cwd: temporary,
-    env: {
-      ...fakeEnvironment,
-      FAKE_EXISTING: "1",
-      FAIL_SECOND_PLUGIN: pluginFailureMarker,
-      FAIL_REMOVE: "1",
-    },
-  });
-  fs.writeFileSync(fakeScript, enabledFakeSource);
-  const cleanupFailureCalls = fs.readFileSync(commandLog, "utf8").trim().split(/\r?\n/).map(JSON.parse);
-  if (!cleanupFailureCalls.some((args) => args.join(" ") === "plugin marketplace add /previous")) {
-    throw new Error("A partial-plugin cleanup failure prevented marketplace restoration.");
-  }
-  if (!`${cleanupFailure.stdout}\n${cleanupFailure.stderr}`.includes("Rollback errors:")) {
-    throw new Error("A partial-plugin cleanup failure was not reported after rollback continued.");
-  }
-
-  fs.writeFileSync(commandLog, "");
   fs.rmSync(pluginFailureMarker, { force: true });
   runExpectFailure(process.execPath, [cli, "setup", "--skip-config"], {
     cwd: temporary,

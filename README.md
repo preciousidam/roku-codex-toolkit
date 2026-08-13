@@ -39,7 +39,18 @@ npx roku-codex-toolkit setup
 
 Python 3.9+ and Git remain external requirements; the npm package bundles neither. `doctor` checks Node, Python, Git, and Codex. `setup` completes those runtime checks before changing Codex configuration, then registers the matching versioned Git tag as the durable marketplace source. The transient `npx` cache is never registered. Use `--skip-config` to install the plugins without prompting for a Roku target.
 
-To upgrade, run the setup command with the desired npm version. To remove the distribution, uninstall the npm package and remove the installed plugins or marketplace with the Codex CLI. Existing Roku configuration is intentionally retained so uninstalling cannot silently delete user data.
+`setup` intentionally refuses to replace an existing marketplace or alter orphaned toolkit plugin state. Codex does not currently expose enough information to reconstruct a version-pinned marketplace safely after an interrupted replacement.
+
+Upgrades are therefore explicit. Confirm the desired version and that no toolkit plugin is intentionally disabled, then run:
+
+```sh
+codex plugin remove roku-device-toolkit@roku-codex-toolkit
+codex plugin remove roku-engineering@roku-codex-toolkit
+codex plugin marketplace remove roku-codex-toolkit
+npx roku-codex-toolkit@<version> setup
+```
+
+If any removal fails, stop and inspect `codex plugin list --json` and `codex plugin marketplace list --json` before continuing. Existing Roku device configuration is intentionally retained. To uninstall, use the same removal commands and then uninstall any globally installed npm package.
 
 Installing from the GitHub marketplace remains supported and canonical. No package is published, tagged, or promoted automatically by repository changes.
 

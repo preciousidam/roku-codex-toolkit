@@ -58,16 +58,12 @@ const marketplaces = run("codex", ["plugin", "marketplace", "list", "--json"], {
 requireSuccess(marketplaces, "Inspecting Codex marketplaces; repair stale marketplace entries before setup");
 const marketplaceEntries = JSON.parse(marketplaces.stdout).marketplaces ?? [];
 const existingMarketplace = marketplaceEntries.find((entry) => entry.name === marketplaceName);
-let previouslyInstalledPlugins = [];
 if (existingMarketplace) {
-  previouslyInstalledPlugins = inspectInstalledPlugins();
-  const disabled = previouslyInstalledPlugins.filter((entry) => !entry.enabled).map((entry) => entry.name);
-  if (disabled.length > 0) {
-    throw new Error(
-      `Setup cannot safely replace a marketplace containing disabled plugins: ${disabled.join(", ")}. ` +
-      "Enable or remove them explicitly before retrying so their state is not changed by rollback.",
-    );
-  }
+  throw new Error(
+    "The roku-codex-toolkit marketplace is already registered; setup left it unchanged. " +
+    "Automatic replacement is intentionally unsupported because Codex does not expose enough state to restore " +
+    "a version-pinned marketplace safely. Follow the explicit upgrade steps in README.md.",
+  );
 }
 const desiredSource = sourceCheckout ? repoRoot : marketplaceSource;
 const desiredArgs = sourceCheckout
@@ -84,8 +80,7 @@ function inspectInstalledPlugins() {
   )).map((entry) => ({ name: entry.name, enabled: entry.enabled !== false }));
 }
 
-function restorePreviousMarketplace() {
-  const previous = existingMarketplace?.marketplaceSource;
+function cleanUpFreshInstall() {
   const errors = [];
   const attempt = (description, action) => {
     try {
@@ -104,19 +99,6 @@ function restorePreviousMarketplace() {
     "Removing the failed Roku Codex Toolkit marketplace",
     () => run("codex", ["plugin", "marketplace", "remove", marketplaceName]),
   );
-  if (!previous?.source) return errors;
-  const restoreArgs = ["plugin", "marketplace", "add", previous.source];
-  if (previous.ref) restoreArgs.push("--ref", previous.ref);
-  attempt(
-    "Restoring the previous Roku Codex Toolkit marketplace",
-    () => run("codex", restoreArgs),
-  );
-  for (const plugin of previouslyInstalledPlugins) {
-    attempt(
-      `Restoring ${plugin.name}`,
-      () => run("codex", ["plugin", "add", `${plugin.name}@${marketplaceName}`]),
-    );
-  }
   return errors;
 }
 
@@ -126,16 +108,6 @@ function throwWithRollbackErrors(error, rollbackErrors) {
   throw new Error(`${message}\nRollback errors:\n- ${rollbackErrors.join("\n- ")}`, { cause: error });
 }
 
-if (existingMarketplace) {
-  try {
-    requireSuccess(
-      run("codex", ["plugin", "marketplace", "remove", marketplaceName]),
-      "Removing the existing Roku Codex Toolkit marketplace",
-    );
-  } catch (error) {
-    throwWithRollbackErrors(error, restorePreviousMarketplace());
-  }
-}
 let addMarketplace;
 try {
   addMarketplace = run("codex", desiredArgs);
@@ -151,19 +123,20 @@ if (addMarketplace.status !== 0) {
       error = failure;
     }
   }
-  throwWithRollbackErrors(error, restorePreviousMarketplace());
+  throwWithRollbackErrors(error, cleanUpFreshInstall());
 }
 
-if (!existingMarketplace) {
+try {
   const orphanedPlugins = inspectInstalledPlugins();
-  const disabled = orphanedPlugins.filter((entry) => !entry.enabled).map((entry) => entry.name);
-  if (disabled.length > 0) {
-    const error = new Error(
-      `Setup cannot safely reinstall disabled orphaned plugins: ${disabled.join(", ")}. ` +
-      "Enable or remove them explicitly before retrying so setup does not activate them.",
+  if (orphanedPlugins.length > 0) {
+    throw new Error(
+      `Setup found orphaned Roku Codex Toolkit plugin state: ${orphanedPlugins.map((entry) => entry.name).join(", ")}. ` +
+      "The temporary marketplace was removed without changing those plugins. Remove or repair the orphaned " +
+      "entries explicitly before retrying.",
     );
-    throwWithRollbackErrors(error, restorePreviousMarketplace());
   }
+} catch (error) {
+  throwWithRollbackErrors(error, cleanUpFreshInstall());
 }
 
 try {
@@ -178,7 +151,7 @@ try {
     );
   }
 } catch (error) {
-  throwWithRollbackErrors(error, restorePreviousMarketplace());
+  throwWithRollbackErrors(error, cleanUpFreshInstall());
 }
 
 if (!skipConfig) {

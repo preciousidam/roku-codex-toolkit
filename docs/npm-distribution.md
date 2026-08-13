@@ -12,6 +12,8 @@ The CLI exposes:
 - `roku-codex-toolkit validate` for installed-tarball integrity and runtime validation.
 - `roku-codex-toolkit setup` for explicit installation from the matching versioned Git tag. The npm cache is not used as a persistent marketplace path.
 
+Setup is deliberately fresh-install-only. It refuses to replace an existing marketplace or modify orphaned plugin entries because the current Codex marketplace listing does not expose enough information to restore a prior version-pinned Git source transactionally. Upgrades use the documented explicit remove-and-install workflow; interrupted operations must be inspected before retrying.
+
 There is no `postinstall` script. Installation alone performs no configuration changes, network requests, credential prompts, or device operations.
 
 ## Versioning
