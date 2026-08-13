@@ -1,6 +1,6 @@
 {
   "name": "roku-engineering",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Diagnose, review, and prepare releases for Roku BrightScript and SceneGraph projects.",
   "author": {
     "name": "Ebube Idam"

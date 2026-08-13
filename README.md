@@ -29,9 +29,9 @@ npm run setup
 
 `npm run setup` registers this repository as the `roku-codex-toolkit` marketplace, installs both plugins, and optionally prompts for device configuration. Use `npm run setup -- --skip-config` to install without configuring a Roku.
 
-## Install with npm (preview)
+## Install with npm (v0.2.0 release candidate)
 
-The npm distribution is under development and has not been published. Once released, the intended workflow is:
+The npm distribution is prepared but has not been published. After v0.2.0 is published, the intended workflow is:
 
 ```sh
 npx roku-codex-toolkit doctor
@@ -69,7 +69,7 @@ The test suite runs on macOS, Linux, and Windows in CI. That establishes host-si
 
 ## Project status
 
-This repository is stabilizing toward v0.1.0. See [the release boundary](docs/v0.1.0.md), [stabilization audit](docs/stabilization-audit.md), [hardware validation matrix](docs/hardware-validation.md), and [contributor guide](CONTRIBUTING.md).
+v0.1.0 established the public plugin baseline. v0.2.0 adds the npm delivery path and stable flow JSON contracts without rewriting the Python device runtime. See [the v0.2.0 release boundary](docs/v0.2.0.md), [stabilization audit](docs/stabilization-audit.md), [hardware validation matrix](docs/hardware-validation.md), and [contributor guide](CONTRIBUTING.md).
 
 ## Roku tooling landscape
 

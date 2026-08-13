@@ -388,6 +388,28 @@ test("npm metadata exposes a side-effect-free public CLI package", () => {
   );
 });
 
+test("release metadata and publication workflow enforce a single version", () => {
+  const metadata = readJson(path.join(root, "package.json"));
+  const releaseTag = `v${metadata.version}`;
+  assert.doesNotThrow(() => execFileSync(
+    process.execPath,
+    [path.join(root, "scripts", "verify-release.mjs"), releaseTag],
+    { cwd: root, encoding: "utf8", stdio: "pipe" },
+  ));
+  assert.throws(() => execFileSync(
+    process.execPath,
+    [path.join(root, "scripts", "verify-release.mjs"), "v9.9.9"],
+    { cwd: root, encoding: "utf8", stdio: "pipe" },
+  ));
+
+  const workflow = fs.readFileSync(path.join(root, ".github", "workflows", "publish.yml"), "utf8");
+  assert.match(workflow, /release:\s*\n\s+types: \[published\]/);
+  assert.match(workflow, /environment: npm/);
+  assert.match(workflow, /id-token: write/);
+  assert.match(workflow, /npm run verify:release/);
+  assert.match(workflow, /npm publish --access public/);
+});
+
 test("setup runtime rejects unsupported Node versions", () => {
   const original = process.versions.node;
   Object.defineProperty(process.versions, "node", { configurable: true, value: "17.9.1" });
