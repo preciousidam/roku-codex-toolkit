@@ -16,6 +16,40 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const pluginRoots = ["roku-device-toolkit", "roku-engineering"].map((name) => path.join(root, "plugins", name));
 const readJson = (file) => JSON.parse(fs.readFileSync(file, "utf8"));
 
+function markdownFiles(directory) {
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const absolute = path.join(directory, entry.name);
+    if (entry.isDirectory()) return markdownFiles(absolute);
+    return entry.isFile() && entry.name.endsWith(".md") ? [absolute] : [];
+  });
+}
+
+test("documentation links resolve and onboarding preserves public safety boundaries", () => {
+  const markdown = [path.join(root, "README.md"), path.join(root, "CONTRIBUTING.md"), ...markdownFiles(path.join(root, "docs"))];
+  for (const file of markdown) {
+    const source = fs.readFileSync(file, "utf8");
+    for (const match of source.matchAll(/\[[^\]]+\]\(([^)]+)\)/g)) {
+      const target = match[1];
+      if (/^(?:https?:|mailto:|#)/.test(target)) continue;
+      const [relative] = target.split("#", 1);
+      assert.ok(fs.existsSync(path.resolve(path.dirname(file), relative)), `${path.relative(root, file)} -> ${target}`);
+    }
+  }
+
+  const gettingStarted = fs.readFileSync(path.join(root, "docs", "getting-started.md"), "utf8");
+  const troubleshooting = fs.readFileSync(path.join(root, "docs", "troubleshooting.md"), "utf8");
+  assert.match(gettingStarted, /npx --yes roku-codex-toolkit@latest doctor/);
+  assert.match(gettingStarted, /npx --yes roku-codex-toolkit@latest setup/);
+  assert.match(gettingStarted, /ROKU_TOOLKIT_INTENTIONAL_MISSING_CHECKPOINT_7B2E/);
+  assert.match(gettingStarted, /successful screenshot capture proves only/i);
+  assert.match(gettingStarted, /physical Roku required/i);
+  assert.doesNotMatch(gettingStarted, /(?:https?:\/\/)?(?:\d{1,3}\.){3}\d{1,3}/);
+  assert.match(troubleshooting, /py -3/);
+  assert.match(troubleshooting, /Windows command shims/);
+  assert.match(troubleshooting, /port `8060`/);
+  assert.match(troubleshooting, /port `8085`/);
+});
+
 test("marketplace entries resolve portably to valid plugin manifests", () => {
   const marketplace = readJson(path.join(root, ".agents/plugins/marketplace.json"));
   assert.equal(marketplace.name, "roku-codex-toolkit");
