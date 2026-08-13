@@ -10,10 +10,10 @@ The toolkit continues to support Node.js 18 and Python 3.9. Current Astro and St
 newer Node runtime, so the website has its own `package.json`, lockfile, and Node 22.12+ requirement.
 Website dependencies are never included in the `roku-codex-toolkit` npm tarball.
 
-GitHub Pages is the preferred eventual host because this is a public GitHub repository, the output
-is entirely static, and deployment can use GitHub Actions with no runtime secrets. The included
-workflow template is intentionally inactive. Enabling Pages or copying that template into
-`.github/workflows` requires separate approval.
+GitHub Pages is the initial host because this is a public GitHub repository, the output is entirely
+static, and deployment uses GitHub Actions with no runtime secrets. The active workflow builds and
+validates the portal before deploying changes merged to `main`. A different static host can be
+adopted later without changing the canonical Markdown sources.
 
 ## Alternatives considered
 
@@ -48,15 +48,15 @@ preview.
 
 ## Deployment boundary
 
-`website/deploy/github-pages.yml` is a reviewed template, not an active workflow. After explicit
-publication approval:
+`.github/workflows/docs-pages.yml` deploys only after relevant changes reach `main`, or through an
+explicit manual dispatch. Its build job has read-only repository access plus the Pages permission
+required to configure the site. The deployment job alone receives the Pages write and identity-token
+permissions required by GitHub's deployment action. The workflow exposes no credentials or runtime
+configuration because the site is static.
 
-1. Enable GitHub Pages with GitHub Actions as the source.
-2. Copy the template to `.github/workflows/docs-pages.yml` in a focused deployment pull request.
-3. Protect the `github-pages` environment and review the workflow permissions.
-4. Require the documentation CI job and preview the production artifact before merging.
-5. Deploy only from `main`; do not expose credentials or runtime configuration because the site is
-   static.
+The `github-pages` environment records deployment history and the published URL. Repository changes
+must pass the independent documentation CI job before merge; the deployment workflow repeats the
+production build and static audit before uploading an artifact.
 
 The initial project URL uses the `/roku-codex-toolkit/` base path. A custom domain can be introduced
 later without changing canonical repository links.
