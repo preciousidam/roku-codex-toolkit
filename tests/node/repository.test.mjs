@@ -78,6 +78,10 @@ test("published-package smoke matrix preserves host-only release evidence", () =
   assert.match(script, /ROKU_SMOKE_ALLOW_REMOVALS !== "1"/);
   assert.match(script, /child\.stdin\.on\("error"/);
   assert.match(script, /roku-device-toolkit@roku-codex-toolkit/);
+  assert.match(script, /JSON\.stringify\(args\) !== JSON\.stringify\(expected\)/);
+  assert.match(script, /assertDeviceConfigAbsent\(\)/);
+  assert.match(script, /async function terminateChildTree/);
+  assert.match(script, /await terminateChildTree\(child, exit\)/);
   assert.match(script, /marketplace\.ref !== `v\$\{version\}`/);
   assert.match(script, /lifecycleScriptsAbsent: "pass"/);
   assert.match(report, /manual Codex confirmation/i);

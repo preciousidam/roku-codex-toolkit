@@ -53,27 +53,87 @@ const installPrefix = path.join(temporary, "install");
 const taggedCheckout = path.join(temporary, "tagged-checkout");
 const delimiter = process.platform === "win32" ? ";" : ":";
 
-function run(command, args, options = {}) {
-  const result = spawnSync(command, args, {
-    cwd: options.cwd ?? temporary,
-    encoding: "utf8",
-    env: options.env ?? smokeEnvironment,
-    input: options.input,
-    timeout: options.timeout ?? 120_000,
+function waitForChildExit(exit, timeoutMs) {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(false), timeoutMs);
+    exit.then(() => { clearTimeout(timer); resolve(true); });
   });
-  if (result.error || result.status !== 0) {
-    throw new Error(
-      `${command} ${args.join(" ")} failed:\n${result.error?.message ?? ""}\n${result.stdout}\n${result.stderr}`,
-    );
-  }
-  return result;
 }
 
-function npm(args, options = {}) {
+async function terminateChildTree(child, exit) {
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  child.stdin?.destroy();
+  if (process.platform === "win32") {
+    const killed = spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
+      encoding: "utf8",
+      timeout: 10_000,
+    });
+    if (killed.error || killed.status !== 0) child.kill();
+  } else {
+    try {
+      process.kill(-child.pid, "SIGTERM");
+    } catch {
+      child.kill("SIGTERM");
+    }
+  }
+  if (!(await waitForChildExit(exit, 5_000))) {
+    if (process.platform === "win32") child.kill();
+    else {
+      try {
+        process.kill(-child.pid, "SIGKILL");
+      } catch {
+        child.kill("SIGKILL");
+      }
+    }
+    if (!(await waitForChildExit(exit, 5_000))) {
+      throw new Error(`process tree ${child.pid} did not exit after forced termination`);
+    }
+  }
+}
+
+async function run(command, args, options = {}) {
+  const child = spawn(command, args, {
+    cwd: options.cwd ?? temporary,
+    detached: process.platform !== "win32",
+    env: options.env ?? smokeEnvironment,
+    stdio: ["pipe", "pipe", "pipe"],
+    windowsHide: true,
+  });
+  let stdout = "";
+  let stderr = "";
+  child.stdout.setEncoding("utf8");
+  child.stderr.setEncoding("utf8");
+  child.stdout.on("data", (chunk) => { stdout += chunk; });
+  child.stderr.on("data", (chunk) => { stderr += chunk; });
+  child.stdin.on("error", () => {});
+  child.stdin.end(options.input);
+  const exit = new Promise((resolve) => {
+    child.once("error", (error) => resolve({ error }));
+    child.once("close", (status, signal) => resolve({ status, signal }));
+  });
+  let timer;
+  const timeout = new Promise((resolve) => {
+    timer = setTimeout(() => resolve({ timedOut: true }), options.timeout ?? 120_000);
+  });
+  const result = await Promise.race([exit, timeout]);
+  clearTimeout(timer);
+  if (result.timedOut) {
+    await terminateChildTree(child, exit);
+    throw new Error(`${command} ${args.join(" ")} timed out.\n${stdout}\n${stderr}`);
+  }
+  if (result.error || result.status !== 0) {
+    throw new Error(
+      `${command} ${args.join(" ")} failed:\n${result.error?.message ?? ""}\n${stdout}\n${stderr}`,
+    );
+  }
+  return { ...result, stdout, stderr };
+}
+
+async function npm(args, options = {}) {
   return run(process.execPath, [npmCli, ...args], options);
 }
 
-function npx(commandArgs) {
+async function npx(commandArgs) {
   return npm([
     "exec",
     "--yes",
@@ -88,7 +148,7 @@ function readState() {
   return JSON.parse(fs.readFileSync(stateFile, "utf8"));
 }
 
-function fakeCodexCommand(args, options = {}) {
+async function fakeCodexCommand(args, options = {}) {
   return run(process.execPath, [fakeCodex, ...args], {
     env: {
       ...smokeEnvironment,
@@ -108,6 +168,15 @@ function assertFreshInstallState() {
   const plugins = [...state.plugins].sort();
   if (plugins.join(",") !== "roku-device-toolkit,roku-engineering") {
     throw new Error(`Setup installed an unexpected plugin set: ${plugins.join(", ") || "none"}.`);
+  }
+}
+
+function assertDeviceConfigAbsent() {
+  for (const config of [
+    path.join(isolatedHome, ".config", "roku-device-toolkit", "config.json"),
+    path.join(isolatedConfig, "roku-device-toolkit", "config.json"),
+  ]) {
+    if (fs.existsSync(config)) throw new Error(`Setup --skip-config unexpectedly wrote ${config}.`);
   }
 }
 
@@ -182,46 +251,8 @@ async function listPackagedTools(launcher) {
     failProtocol(new Error(`Packaged MCP launcher stdin failed: ${error.message}`));
   });
 
-  function waitUntilClosed(timeoutMs) {
-    return new Promise((resolve) => {
-      const timer = setTimeout(() => resolve(false), timeoutMs);
-      exit.then(
-        () => { clearTimeout(timer); resolve(true); },
-        () => { clearTimeout(timer); resolve(true); },
-      );
-    });
-  }
-
   async function terminateProcessTree() {
-    if (child.exitCode !== null) return;
-    child.stdin.destroy();
-    if (process.platform === "win32") {
-      const killed = spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
-        encoding: "utf8",
-        timeout: 10_000,
-      });
-      if (killed.error || killed.status !== 0) child.kill();
-    } else {
-      try {
-        process.kill(-child.pid, "SIGTERM");
-      } catch {
-        child.kill("SIGTERM");
-      }
-    }
-    if (!(await waitUntilClosed(5_000))) {
-      if (process.platform === "win32") {
-        child.kill();
-      } else {
-        try {
-          process.kill(-child.pid, "SIGKILL");
-        } catch {
-          child.kill("SIGKILL");
-        }
-      }
-      if (!(await waitUntilClosed(5_000))) {
-        throw new Error(`process tree ${child.pid} did not exit after forced termination`);
-      }
-    }
+    await terminateChildTree(child, exit);
   }
 
   function failProtocol(error) {
@@ -340,6 +371,8 @@ if (args[0] === "--version" || args.join(" ") === "plugin marketplace --help") {
   const state = read();
   console.log(JSON.stringify({ installed: state.plugins.map((name) => ({ name, marketplaceName: "roku-codex-toolkit", installed: true, enabled: true })) }));
 } else if (args[0] === "plugin" && args[1] === "marketplace" && args[2] === "add") {
+  const expected = ["plugin", "marketplace", "add", "preciousidam/roku-codex-toolkit", "--ref", "v${version}"];
+  if (JSON.stringify(args) !== JSON.stringify(expected)) process.exit(2);
   const state = read();
   state.marketplace = { name: "roku-codex-toolkit", source: args[3], ref: args[5] ?? null };
   write(state);
@@ -388,7 +421,7 @@ const smokeEnvironment = {
 };
 
 try {
-  const doctor = npx(["doctor", "--no-codex"]);
+  const doctor = await npx(["doctor", "--no-codex"]);
   const doctorLines = doctor.stdout.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const expectedDoctorChecks = ["Git", "Node.js >=18", "Python >=3.9"];
   const doctorChecks = doctorLines.map((line) => line.match(/^ok - (.+?) \(/)?.[1]).sort();
@@ -400,20 +433,21 @@ try {
     throw new Error(`Published doctor reported an unexpected result:\n${doctor.stdout}`);
   }
 
-  const setup = npx(["setup", "--skip-config"]);
+  const setup = await npx(["setup", "--skip-config"]);
   if (/password|credential/i.test(`${setup.stdout}\n${setup.stderr}`)) {
     throw new Error("Non-interactive setup emitted a credential prompt.");
   }
   assertFreshInstallState();
+  assertDeviceConfigAbsent();
 
-  npm(["install", "--ignore-scripts", "--no-audit", "--no-fund", "--prefix", installPrefix, `${packageName}@${version}`]);
+  await npm(["install", "--ignore-scripts", "--no-audit", "--no-fund", "--prefix", installPrefix, `${packageName}@${version}`]);
   const installedRoot = path.join(installPrefix, "node_modules", packageName);
   const metadata = JSON.parse(fs.readFileSync(path.join(installedRoot, "package.json"), "utf8"));
   for (const lifecycle of ["preinstall", "install", "postinstall", "prepare"]) {
     if (metadata.scripts?.[lifecycle]) throw new Error(`Published package defines an unexpected ${lifecycle} script.`);
   }
   if (metadata.version !== version) throw new Error(`Installed ${metadata.version}; expected ${version}.`);
-  run("git", [
+  await run("git", [
     "-c", "core.autocrlf=false",
     "clone",
     "--depth", "1",
@@ -444,20 +478,21 @@ try {
   ));
 
   for (const plugin of ["roku-device-toolkit", "roku-engineering"]) {
-    fakeCodexCommand(["plugin", "remove", `${plugin}@${packageName}`], { allowRemovals: true });
+    await fakeCodexCommand(["plugin", "remove", `${plugin}@${packageName}`], { allowRemovals: true });
   }
-  fakeCodexCommand(["plugin", "marketplace", "remove", packageName], { allowRemovals: true });
+  await fakeCodexCommand(["plugin", "marketplace", "remove", packageName], { allowRemovals: true });
   const removed = readState();
   if (removed.marketplace || removed.plugins.length !== 0) {
     throw new Error("Documented uninstall commands left toolkit state behind.");
   }
-  npx(["setup", "--skip-config"]);
+  await npx(["setup", "--skip-config"]);
   assertFreshInstallState();
+  assertDeviceConfigAbsent();
 
   const pythonRuntime = findPython();
   if (!pythonRuntime) throw new Error("Python 3.9 or newer disappeared after doctor completed.");
-  const python = run(pythonRuntime.command, [...pythonRuntime.args, "--version"]);
-  const git = run("git", ["--version"]);
+  const python = await run(pythonRuntime.command, [...pythonRuntime.args, "--version"]);
+  const git = await run("git", ["--version"]);
   console.log(JSON.stringify({
     schemaVersion: 1,
     package: `${packageName}@${version}`,
