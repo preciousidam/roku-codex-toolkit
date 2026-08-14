@@ -31,8 +31,9 @@ npx --yes roku-codex-toolkit@latest setup
 
 Setup registers a version-pinned GitHub marketplace and installs `roku-device-toolkit` and
 `roku-engineering`. On macOS, its interactive configuration prompt stores the developer password
-in Keychain. On Linux and Windows, setup stores only the target; provide the password to the
-specific process that needs a developer-mode operation.
+in Keychain; enter it only when the macOS Keychain prompt appears. On Linux and Windows, setup
+stores only the target; provide the password to the specific process that needs a developer-mode
+operation.
 
 To install without recording a Roku target, use:
 

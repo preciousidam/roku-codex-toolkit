@@ -31,6 +31,42 @@ server = load("roku_server_test", "plugins/roku-device-toolkit/mcp/server.py")
 
 
 class ConfigurationTests(unittest.TestCase):
+    def test_keychain_storage_uses_terminal_prompt_without_secret_transport(self):
+        completed = mock.Mock(returncode=0)
+        with mock.patch.object(config.sys, "platform", "darwin"), \
+             mock.patch.object(config.subprocess, "run", return_value=completed) as run:
+            config.store_keychain_password()
+        command = run.call_args.args[0]
+        self.assertEqual(command[-1], "-w")
+        self.assertNotIn("developer-secret", command)
+        self.assertEqual(run.call_args.kwargs, {
+            "check": False,
+            "timeout": config.KEYCHAIN_PROMPT_TIMEOUT_SECONDS,
+        })
+        self.assertEqual(completed.returncode, 0)
+
+    def test_keychain_timeout_is_actionable_and_secret_free(self):
+        error = config.subprocess.TimeoutExpired(["security"], config.KEYCHAIN_PROMPT_TIMEOUT_SECONDS)
+        with mock.patch.object(config.sys, "platform", "darwin"), \
+             mock.patch.object(config.subprocess, "run", side_effect=error), \
+             self.assertRaisesRegex(RuntimeError, "timeout.*target remains saved") as raised:
+            config.store_keychain_password()
+        self.assertNotIn("developer-secret", str(raised.exception))
+
+    def test_keychain_cancellation_is_actionable(self):
+        with mock.patch.object(config.sys, "platform", "darwin"), \
+             mock.patch.object(config.subprocess, "run", side_effect=KeyboardInterrupt), \
+             self.assertRaisesRegex(RuntimeError, "cancelled.*target remains saved"):
+            config.store_keychain_password()
+
+    def test_keychain_nonzero_exit_does_not_forward_sensitive_output(self):
+        completed = mock.Mock(returncode=1, stdout="developer-secret", stderr="developer-secret")
+        with mock.patch.object(config.sys, "platform", "darwin"), \
+             mock.patch.object(config.subprocess, "run", return_value=completed), \
+             self.assertRaisesRegex(RuntimeError, "did not store.*target remains saved") as raised:
+            config.store_keychain_password()
+        self.assertNotIn("developer-secret", str(raised.exception))
+
     def test_target_rejects_urls_and_ports(self):
         for value in ("", "http://roku", "roku:8060", "user@roku"):
             with self.subTest(value=value), self.assertRaises(ValueError):

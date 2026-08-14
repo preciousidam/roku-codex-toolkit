@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import getpass
 import json
 import os
 import subprocess
@@ -23,7 +22,8 @@ CONFIG_ENV = "ROKU_TOOLKIT_CONFIG"
 DEFAULT_CONFIG = Path("~/.config/roku-device-toolkit/config.json").expanduser()
 KEYCHAIN_SERVICE = "roku-device-toolkit"
 KEYCHAIN_ACCOUNT = "rokudev"
-KEYCHAIN_TIMEOUT_SECONDS = 15
+KEYCHAIN_READ_TIMEOUT_SECONDS = 15
+KEYCHAIN_PROMPT_TIMEOUT_SECONDS = 120
 
 def ensure_private_directory(path: Path, harden_existing: bool = False) -> None:
     """Create missing directories privately without changing an existing parent."""
@@ -126,7 +126,7 @@ def keychain_password() -> str:
             text=True,
             capture_output=True,
             check=False,
-            timeout=KEYCHAIN_TIMEOUT_SECONDS,
+            timeout=KEYCHAIN_READ_TIMEOUT_SECONDS,
         )
     except (OSError, subprocess.TimeoutExpired):
         return ""
@@ -135,27 +135,32 @@ def keychain_password() -> str:
     return ""
 
 
-def store_keychain_password(password: str) -> None:
+def store_keychain_password() -> None:
     if sys.platform != "darwin":
         raise RuntimeError("Secure password setup currently requires macOS Keychain.")
-    if not password:
-        raise ValueError("Developer password cannot be empty.")
     try:
         completed = subprocess.run(
             [
                 "security", "add-generic-password", "-U", "-a", KEYCHAIN_ACCOUNT,
                 "-s", KEYCHAIN_SERVICE, "-l", "Roku developer password", "-w",
             ],
-            input=password + "\n",
-            text=True,
-            capture_output=True,
             check=False,
-            timeout=KEYCHAIN_TIMEOUT_SECONDS,
+            timeout=KEYCHAIN_PROMPT_TIMEOUT_SECONDS,
         )
-    except (OSError, subprocess.TimeoutExpired) as error:
-        raise RuntimeError("Unable to store the password in macOS Keychain.") from error
+    except KeyboardInterrupt as error:
+        raise RuntimeError("Password storage was cancelled; the Roku target remains saved.") from error
+    except subprocess.TimeoutExpired as error:
+        raise RuntimeError(
+            "macOS Keychain did not finish prompting before the timeout; the Roku target remains saved."
+        ) from error
+    except OSError as error:
+        raise RuntimeError(
+            "Unable to start macOS Keychain password storage; the Roku target remains saved."
+        ) from error
     if completed.returncode != 0:
-        raise RuntimeError(completed.stderr.strip() or "Unable to store the password in macOS Keychain.")
+        raise RuntimeError(
+            "macOS Keychain did not store the password; the Roku target remains saved."
+        )
 
 
 def configuration_status() -> dict[str, Any]:
@@ -184,8 +189,8 @@ def main() -> None:
     target = args.target or input("Roku IP address or hostname: ")
     path = save_target(target)
     if not args.skip_password and sys.platform == "darwin":
-        password = getpass.getpass("Roku developer password (stored in macOS Keychain): ")
-        store_keychain_password(password)
+        print("Enter the Roku developer password at the macOS Keychain prompt.")
+        store_keychain_password()
     elif not args.skip_password and os.environ.get("ROKU_DEV_PASSWORD"):
         print("Using ROKU_DEV_PASSWORD from the environment; no password was stored.")
     elif not args.skip_password:

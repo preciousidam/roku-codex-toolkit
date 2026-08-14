@@ -103,6 +103,11 @@ Linux or Windows, set `ROKU_DEV_PASSWORD` only in the process performing the ope
 afterward. An authentication failure on port `80` usually indicates developer mode or credential
 access, not ECP reachability.
 
+During macOS configuration, enter the password only at the prompt emitted by Keychain. The toolkit
+does not pass it through command arguments, standard input, captured output, or error messages. If
+the prompt is cancelled, times out, or fails, the target and Codex plugins remain installed; rerun
+interactive configuration when Keychain is available.
+
 Sideloading replaces the currently sideloaded development application. Never retry it after an
 ambiguous timeout until the active app and console evidence have been inspected.
 
