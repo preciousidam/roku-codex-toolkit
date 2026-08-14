@@ -22,6 +22,13 @@ function refuse(reason) {
   return { disposition: "refuse", reason };
 }
 
+export function checkoutIsClean(statusOutput, ignoredOutput) {
+  const statusEntries = statusOutput.split("\0").filter(Boolean);
+  if (statusEntries.some((entry) => entry !== "?? .codex-marketplace-install.json")) return false;
+  const disposableCache = /^plugins\/(?:roku-device-toolkit|roku-engineering)\/(?:[^/\r\n]+\/)*__pycache__\/[^/\r\n]+\.py[co]$/;
+  return ignoredOutput.split("\0").filter(Boolean).every((entry) => disposableCache.test(entry));
+}
+
 export function classifyUpgradeState({ marketplaces, plugins, receipt, checkout, targetVersion }) {
   if (!Array.isArray(marketplaces) || !Array.isArray(plugins)) {
     return refuse("Codex marketplace or plugin inventory is malformed.");

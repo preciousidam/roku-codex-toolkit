@@ -179,6 +179,8 @@ test("device plugin exposes the portable launcher", () => {
   assert.deepEqual(config.mcpServers["roku-device"].args, ["./scripts/launch-mcp.mjs"]);
   assert.equal(config.mcpServers["roku-device"].cwd, ".");
   assert.equal(config.mcpServers["roku-device"].command, "node");
+  const launcher = fs.readFileSync(path.join(pluginRoots[0], "scripts", "launch-mcp.mjs"), "utf8");
+  assert.match(launcher, /PYTHONDONTWRITEBYTECODE: "1"/);
 });
 
 test("public plugin metadata references sanitized reusable assets", () => {

@@ -51,7 +51,6 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
     // parent handler installed prevents the wrapper from exiting while the
     // upgrade child performs bounded rollback.
     interruptedSignal ??= signal;
-    try { child.kill(signal); } catch {}
   });
 }
 const result = await new Promise((resolve) => {

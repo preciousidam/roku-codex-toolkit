@@ -8,7 +8,12 @@ import { fileURLToPath } from "node:url";
 
 import { buildWindowsShimInvocation, requirePython, requireSupportedNode } from "./runtime-support.mjs";
 import { acquireToolkitLock } from "./toolkit-lock.mjs";
-import { classifyUpgradeState, executeUpgradeTransaction, upgradeInventory } from "./upgrade-state.mjs";
+import {
+  checkoutIsClean,
+  classifyUpgradeState,
+  executeUpgradeTransaction,
+  upgradeInventory,
+} from "./upgrade-state.mjs";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const packageVersion = JSON.parse(fs.readFileSync(path.join(packageRoot, "package.json"), "utf8")).version;
@@ -23,7 +28,9 @@ if (args.length > 0) throw new Error(`Unknown upgrade option${args.length === 1 
 const controller = new AbortController();
 let rollbackMode = false;
 for (const signal of ["SIGINT", "SIGTERM"]) {
-  process.once(signal, () => controller.abort(new Error(`Upgrade cancelled by ${signal}.`)));
+  process.on(signal, () => {
+    if (!controller.signal.aborted) controller.abort(new Error(`Upgrade cancelled by ${signal}.`));
+  });
 }
 
 function invocation(command, commandArgs) {
@@ -133,8 +140,9 @@ async function inspectState() {
     return { marketplaces, plugins, receipt: undefined, checkout: undefined };
   }
   try {
-    const [status, head, refRevision] = await Promise.all([
-      run("git", ["status", "--porcelain", "--untracked-files=all", "--ignored"], { cwd: root, capture: true }),
+    const [status, ignored, head, refRevision] = await Promise.all([
+      run("git", ["status", "--porcelain=v1", "-z", "--untracked-files=all"], { cwd: root, capture: true }),
+      run("git", ["ls-files", "-z", "--others", "--ignored", "--exclude-standard"], { cwd: root, capture: true }),
       run("git", ["rev-parse", "HEAD"], { cwd: root, capture: true }),
       run("git", ["rev-list", "-n", "1", receipt.ref_name], { cwd: root, capture: true }),
     ]);
@@ -143,9 +151,7 @@ async function inspectState() {
       plugins,
       receipt,
       checkout: {
-        clean: status.stdout.split(/\r?\n/).filter(Boolean).every(
-          (line) => line === "?? .codex-marketplace-install.json",
-        ),
+        clean: checkoutIsClean(status.stdout, ignored.stdout),
         head: head.stdout.trim(),
         refRevision: refRevision.stdout.trim(),
       },
