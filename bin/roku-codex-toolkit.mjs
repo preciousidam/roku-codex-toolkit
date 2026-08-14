@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const commands = new Map([
   ["setup", "setup-roku-toolkit.mjs"],
+  ["upgrade", "upgrade-roku-toolkit.mjs"],
   ["doctor", "doctor-roku-toolkit.mjs"],
   ["validate", "validate-install.mjs"],
 ]);
@@ -18,6 +19,7 @@ function usage() {
 
 Commands:
   setup       Register the marketplace and install both Codex plugins
+  upgrade     Safely replace a supported version-pinned toolkit installation
   doctor      Check Node, Python, Codex, and packaged runtime availability
   validate    Validate installed package contents and runtime requirements`);
 }

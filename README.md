@@ -44,18 +44,21 @@ are covered in [troubleshooting](docs/troubleshooting.md).
 
 Python 3.9+ and Git remain external requirements; the npm package bundles neither. `doctor` checks Node, Python, Git, and Codex. `setup` completes those runtime checks before changing Codex configuration, then registers the matching versioned Git tag as the durable marketplace source. The transient `npx` cache is never registered. Use `--skip-config` to install the plugins without prompting for a Roku target.
 
-`setup` intentionally refuses to replace an existing marketplace or alter orphaned toolkit plugin state. Codex does not currently expose enough information to reconstruct a version-pinned marketplace safely after an interrupted replacement.
-
-Upgrades are therefore explicit. Confirm the desired version and that no toolkit plugin is intentionally disabled, then run:
+`setup` intentionally refuses to replace an existing marketplace or alter orphaned toolkit plugin state.
+For a healthy public installation created by npm setup, upgrade with the desired published version:
 
 ```sh
-codex plugin remove roku-device-toolkit@roku-codex-toolkit
-codex plugin remove roku-engineering@roku-codex-toolkit
-codex plugin marketplace remove roku-codex-toolkit
-npx roku-codex-toolkit@<version> setup
+npx --yes roku-codex-toolkit@<version> upgrade
 ```
 
-If any removal fails, stop and inspect `codex plugin list --json` and `codex plugin marketplace list --json` before continuing. Existing Roku device configuration is intentionally retained. To uninstall, use the same removal commands and then uninstall any globally installed npm package.
+The command changes nothing unless it can verify and reconstruct the exact existing version. It
+refuses local, partial, dirty, unversioned, mixed-version, intentionally disabled, and downgrade
+states. After mutation begins, failure or cancellation triggers bounded rollback and verification.
+Existing Roku device configuration and credentials are outside the transaction and remain intact.
+See the [transactional upgrade state model](docs/upgrade-state-model.md) for the precise boundary.
+
+To uninstall, remove both plugins and then the marketplace explicitly before uninstalling any
+globally installed npm package.
 
 Installing from the GitHub marketplace remains supported and canonical. Repository changes alone do not publish, tag, or promote a package; publication requires an approved versioned GitHub release.
 
@@ -79,6 +82,8 @@ and recoverable upgrades while preserving the established Python and Node.js res
 also the [clean-install smoke matrix](docs/clean-install-smoke.md),
 [stabilization audit](docs/stabilization-audit.md),
 [hardware validation matrix](docs/hardware-validation.md), and [contributor guide](CONTRIBUTING.md).
+The proposed upgrade safety boundary is documented in the
+[transactional upgrade state model](docs/upgrade-state-model.md).
 
 ## Roku tooling landscape
 

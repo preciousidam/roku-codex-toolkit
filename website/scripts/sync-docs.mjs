@@ -11,6 +11,7 @@ const repositoryUrl = "https://github.com/preciousidam/roku-codex-toolkit";
 const canonicalPages = [
   ["docs/getting-started.md", "getting-started.md"],
   ["docs/troubleshooting.md", "troubleshooting.md"],
+  ["docs/upgrade-state-model.md", "upgrade-state-model.md"],
   ["docs/marketplace.md", "marketplace.md"],
   ["docs/reference.md", "reference.md"],
   ["docs/tooling-comparison.md", "tooling-comparison.md"],

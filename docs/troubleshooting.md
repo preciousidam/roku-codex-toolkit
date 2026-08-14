@@ -58,9 +58,10 @@ After a successful setup, restart Codex and open a new task. The installed list 
 `roku-device-toolkit` and `roku-engineering` from the `roku-codex-toolkit` marketplace.
 
 Setup deliberately refuses to overwrite an existing marketplace or repair ambiguous orphaned plugin
-state. Inspect the two JSON listings, preserve any intentionally disabled state, and use the explicit
-upgrade steps in the [README](../README.md#install-with-npm). Do not repeatedly rerun setup after a
-partial failure.
+state. The guarded `upgrade` command supports only a healthy, canonical, version-pinned public
+installation. If it refuses the state, inspect the two JSON listings and the diagnostic before making
+manual changes. Do not repeatedly rerun setup after a partial failure. See the exact supported and
+refused states in the [upgrade model](upgrade-state-model.md).
 
 ## Windows command shims fail
 
