@@ -48,16 +48,25 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            node: 18
+            python: "3.9"
+          - os: macos-latest
+            node: 22
+            python: "3.13"
+          - os: windows-latest
+            node: 22
+            python: "3.13"
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: ${{ matrix.node }}
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: ${{ matrix.python }}
       - run: node scripts/smoke-published-package.mjs --version 0.2.0
 
   documentation:

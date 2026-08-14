@@ -55,11 +55,19 @@ test("documentation links resolve and onboarding preserves public safety boundar
 
 test("published-package smoke matrix preserves host-only release evidence", () => {
   const workflow = fs.readFileSync(path.join(root, ".github", "workflows", "ci.yml"), "utf8");
+  const publishWorkflow = fs.readFileSync(path.join(root, ".github", "workflows", "publish.yml"), "utf8");
+  const smokeJob = workflow.match(/^  published-package-smoke:\n([\s\S]*?)(?=^  [a-z][a-z-]+:\n|(?![\s\S]))/m)?.[0] ?? "";
+  const publishedSmokeJob = publishWorkflow.match(/^  published-package-smoke:\n([\s\S]*?)(?=^  [a-z][a-z-]+:\n|(?![\s\S]))/m)?.[0] ?? "";
   const script = fs.readFileSync(path.join(root, "scripts", "smoke-published-package.mjs"), "utf8");
   const report = fs.readFileSync(path.join(root, "docs", "clean-install-smoke.md"), "utf8");
   const metadata = readJson(path.join(root, "package.json"));
-  assert.match(workflow, /os: \[ubuntu-latest, macos-latest, windows-latest\]/);
-  assert.match(workflow, /smoke-published-package\.mjs --version 0\.2\.0/);
+  assert.match(smokeJob, /os: ubuntu-latest/);
+  assert.match(smokeJob, /os: macos-latest/);
+  assert.match(smokeJob, /os: windows-latest/);
+  assert.match(smokeJob, /node: 18[\s\S]*python: "3\.9"/);
+  assert.match(smokeJob, /smoke-published-package\.mjs --version 0\.2\.0/);
+  assert.match(publishedSmokeJob, /needs: publish/);
+  assert.match(publishedSmokeJob, /smoke-published-package\.mjs --version/);
   assert.match(script, /expectedToolNames/);
   assert.match(script, /new Set\(toolNames\)\.size !== expectedToolNames\.length/);
   assert.match(script, /doctorLines\.length !== expectedDoctorChecks\.length/);
@@ -75,7 +83,10 @@ test("published-package smoke matrix preserves host-only release evidence", () =
   assert.match(script, /message === null \|\| typeof message !== "object" \|\| Array\.isArray\(message\)/);
   assert.match(script, /initializeResult\?\.protocolVersion !== "2025-06-18"/);
   assert.match(script, /expected\.some\(\(command\) => JSON\.stringify\(args\) === JSON\.stringify\(command\)\)/);
-  assert.match(script, /"dependencies", "optionalDependencies", "bundledDependencies", "bundleDependencies"/);
+  assert.match(script, /"dependencies", "optionalDependencies", "peerDependencies", "bundledDependencies", "bundleDependencies"/);
+  assert.match(script, /message\.jsonrpc !== "2\.0"/);
+  assert.match(script, /hasResult === hasError/);
+  assert.match(script, /waitForPublishedPackage/);
   assert.match(script, /assertMarketplaceManifest\(taggedCheckout/);
   assert.match(script, /Packaged MCP launcher did not exit after stdin closed/);
   assert.match(script, /method: "notifications\/initialized"/);

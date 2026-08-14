@@ -52,6 +52,7 @@ const isolatedConfig = path.join(temporary, "config");
 const installPrefix = path.join(temporary, "install");
 const taggedCheckout = path.join(temporary, "tagged-checkout");
 const delimiter = process.platform === "win32" ? ";" : ":";
+const closedChildren = new WeakSet();
 
 function waitForChildExit(exit, timeoutMs) {
   return new Promise((resolve) => {
@@ -61,7 +62,7 @@ function waitForChildExit(exit, timeoutMs) {
 }
 
 async function terminateChildTree(child, exit) {
-  if (child.exitCode !== null || child.signalCode !== null) return;
+  if (closedChildren.has(child)) return;
   child.stdin?.destroy();
   if (process.platform === "win32") {
     const killed = spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
@@ -99,6 +100,7 @@ async function run(command, args, options = {}) {
     stdio: ["pipe", "pipe", "pipe"],
     windowsHide: true,
   });
+  child.once("close", () => closedChildren.add(child));
   let stdout = "";
   let stderr = "";
   child.stdout.setEncoding("utf8");
@@ -131,6 +133,21 @@ async function run(command, args, options = {}) {
 
 async function npm(args, options = {}) {
   return run(process.execPath, [npmCli, ...args], options);
+}
+
+async function waitForPublishedPackage() {
+  let lastError;
+  for (let attempt = 1; attempt <= 12; attempt += 1) {
+    try {
+      const result = await npm(["view", `${packageName}@${version}`, "version", "--json"], { timeout: 30_000 });
+      if (JSON.parse(result.stdout) === version) return;
+      lastError = new Error(`npm returned an unexpected version: ${result.stdout.trim()}`);
+    } catch (error) {
+      lastError = error;
+    }
+    if (attempt < 12) await new Promise((resolve) => setTimeout(resolve, 10_000));
+  }
+  throw new Error(`Package ${packageName}@${version} did not become available: ${lastError?.message}`);
 }
 
 async function npx(commandArgs) {
@@ -238,6 +255,7 @@ async function listPackagedTools(launcher) {
     env: smokeEnvironment,
     stdio: ["pipe", "pipe", "pipe"],
   });
+  child.once("close", () => closedChildren.add(child));
   let stderr = "";
   child.stderr.setEncoding("utf8");
   child.stderr.on("data", (chunk) => { stderr += chunk; });
@@ -325,6 +343,19 @@ async function listPackagedTools(launcher) {
     });
   }
 
+  async function assertResponseEnvelope(message, id) {
+    const hasResult = Object.hasOwn(message, "result");
+    const hasError = Object.hasOwn(message, "error");
+    if (message.jsonrpc !== "2.0" || message.id !== id || hasResult === hasError) {
+      await terminateProcessTree();
+      throw new Error(`Packaged MCP returned an invalid JSON-RPC response ${id}: ${JSON.stringify(message)}`);
+    }
+    if (hasError) {
+      await terminateProcessTree();
+      throw new Error(`Packaged MCP returned an error for request ${id}: ${JSON.stringify(message.error)}`);
+    }
+  }
+
   const initialize = responseFor(1);
   child.stdin.write(`${JSON.stringify({
     jsonrpc: "2.0",
@@ -337,6 +368,7 @@ async function listPackagedTools(launcher) {
     },
   })}\n`);
   const initializeResponse = await initialize;
+  await assertResponseEnvelope(initializeResponse, 1);
   const initializeResult = initializeResponse.result;
   if (
     initializeResult?.protocolVersion !== "2025-06-18" ||
@@ -359,6 +391,7 @@ async function listPackagedTools(launcher) {
   const toolsList = responseFor(2);
   child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} })}\n`);
   const toolsResponse = await toolsList;
+  await assertResponseEnvelope(toolsResponse, 2);
   child.stdin.end();
   const exitCode = await Promise.race([
     exit,
@@ -461,6 +494,7 @@ const smokeEnvironment = {
 };
 
 try {
+  await waitForPublishedPackage();
   const doctor = await npx(["doctor", "--no-codex"]);
   const doctorLines = doctor.stdout.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const expectedDoctorChecks = ["Git", "Node.js >=18", "Python >=3.9"];
@@ -486,7 +520,7 @@ try {
   for (const lifecycle of ["preinstall", "install", "postinstall", "prepare"]) {
     if (metadata.scripts?.[lifecycle]) throw new Error(`Published package defines an unexpected ${lifecycle} script.`);
   }
-  for (const field of ["dependencies", "optionalDependencies", "bundledDependencies", "bundleDependencies"]) {
+  for (const field of ["dependencies", "optionalDependencies", "peerDependencies", "bundledDependencies", "bundleDependencies"]) {
     const value = metadata[field];
     const empty = value === undefined ||
       (Array.isArray(value) ? value.length === 0 : value && typeof value === "object" && Object.keys(value).length === 0);
