@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { spawnSync } from "node:child_process";
+import { fork } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
@@ -40,12 +40,31 @@ if (!script) {
   usage();
   process.exit(2);
 }
-const result = spawnSync(process.execPath, [path.join(packageRoot, "scripts", script), ...args], {
+const child = fork(path.join(packageRoot, "scripts", script), args, {
   cwd: process.cwd(),
-  stdio: "inherit",
+  stdio: ["inherit", "inherit", "inherit", "ipc"],
+});
+let interruptedSignal;
+for (const signal of ["SIGINT", "SIGTERM"]) {
+  process.once(signal, () => {
+    // The terminal normally delivers the signal to both processes. Keeping a
+    // parent handler installed prevents the wrapper from exiting while the
+    // upgrade child performs bounded rollback.
+    interruptedSignal ??= signal;
+    if (command === "upgrade" && child.connected) {
+      child.send({ type: "roku-toolkit-cancel", signal });
+    } else {
+      try { child.kill(signal); } catch {}
+    }
+  });
+}
+const result = await new Promise((resolve) => {
+  child.once("error", (error) => resolve({ error }));
+  child.once("exit", (status, signal) => resolve({ status, signal }));
 });
 if (result.error) {
   console.error(result.error.message);
   process.exit(1);
 }
+if (interruptedSignal || result.signal) process.exit(130);
 process.exit(result.status ?? 1);

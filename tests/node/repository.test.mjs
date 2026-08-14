@@ -71,6 +71,7 @@ test("published-package smoke matrix preserves host-only release evidence", () =
   assert.match(publishWorkflow, /smoke-published-package\.mjs --version[^\n]+--check-contract[\s\S]*npm publish/);
   assert.match(script, /publishedContracts/);
   assert.match(script, /"0\.2\.0": \{[\s\S]*toolNames:/);
+  assert.match(script, /"0\.3\.0": \{[\s\S]*toolNames:/);
   assert.match(script, /No published-package contract is defined/);
   assert.match(script, /Published-package contract \$\{version\} matches \$\{toolCount\} checkout tools/);
   assert.match(script, /new Set\(toolNames\)\.size !== expectedToolNames\.length/);
@@ -178,6 +179,8 @@ test("device plugin exposes the portable launcher", () => {
   assert.deepEqual(config.mcpServers["roku-device"].args, ["./scripts/launch-mcp.mjs"]);
   assert.equal(config.mcpServers["roku-device"].cwd, ".");
   assert.equal(config.mcpServers["roku-device"].command, "node");
+  const launcher = fs.readFileSync(path.join(pluginRoots[0], "scripts", "launch-mcp.mjs"), "utf8");
+  assert.match(launcher, /PYTHONDONTWRITEBYTECODE: "1"/);
 });
 
 test("public plugin metadata references sanitized reusable assets", () => {
@@ -525,6 +528,14 @@ test("npm metadata exposes a side-effect-free public CLI package", () => {
   assert.equal(metadata.publishConfig.access, "public");
   assert.equal(metadata.publishConfig.provenance, true);
   assert.equal(metadata.scripts.postinstall, undefined);
+  const cli = fs.readFileSync(path.join(root, "bin", "roku-codex-toolkit.mjs"), "utf8");
+  const upgrade = fs.readFileSync(path.join(root, "scripts", "upgrade-roku-toolkit.mjs"), "utf8");
+  assert.match(cli, /fork\([\s\S]*"ipc"/);
+  assert.match(cli, /roku-toolkit-cancel/);
+  assert.match(cli, /command === "upgrade" && child\.connected/);
+  assert.match(cli, /child\.kill\(signal\)/);
+  assert.match(upgrade, /process\.on\("message"/);
+  assert.match(upgrade, /process\.disconnect\(\)/);
   assert.ok(!metadata.files.includes("bin/"));
   assert.ok(metadata.files.includes("bin/roku-codex-toolkit.mjs"));
   assert.ok(!metadata.files.includes("plugins/"));

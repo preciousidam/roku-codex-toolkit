@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  checkoutIsClean,
   classifyUpgradeState,
   executeUpgradeTransaction,
   mutationPlan,
@@ -56,6 +57,13 @@ test("unreconstructible states are refused", () => {
     { checkout: { ...healthy.checkout, clean: false } },
     { checkout: { ...healthy.checkout, head: "b".repeat(40) } },
     { plugins: healthy.plugins.map((plugin, index) => ({ ...plugin, version: index ? "0.1.0" : "0.2.0" })) },
+    { plugins: [...healthy.plugins, {
+      name: "stale-toolkit-plugin",
+      marketplaceName: "roku-codex-toolkit",
+      version: "0.2.0",
+      installed: true,
+      enabled: true,
+    }] },
   ];
   for (const override of cases) {
     assert.equal(classifyUpgradeState({ ...healthy, ...override }).disposition, "refuse");
@@ -66,6 +74,24 @@ test("fresh state is directed to setup", () => {
   const result = classifyUpgradeState({ ...healthy, marketplaces: [], plugins: [] });
   assert.equal(result.disposition, "refuse");
   assert.match(result.reason, /use setup/i);
+});
+
+test("checkout cleanliness permits only the receipt and Python bytecode caches", () => {
+  assert.equal(checkoutIsClean("?? .codex-marketplace-install.json\0", ""), true);
+  assert.equal(checkoutIsClean(
+    "?? .codex-marketplace-install.json\0",
+    "plugins/roku-device-toolkit/scripts/__pycache__/roku_config.cpython-39.pyc\0" +
+      "plugins/roku-device-toolkit/mcp/__pycache__/server.cpython-313.pyc\0",
+  ), true);
+  for (const ignored of [
+    ".env\0",
+    "artifacts/screen.png\0",
+    "plugins/roku-device-toolkit/mcp/private.log\0",
+    "plugins/roku-device-toolkit/mcp/__pycache__/credential.txt\0",
+  ]) {
+    assert.equal(checkoutIsClean("?? .codex-marketplace-install.json\0", ignored), false);
+  }
+  assert.equal(checkoutIsClean(" M README.md\0", ""), false);
 });
 
 function transactionFixture(failAt) {

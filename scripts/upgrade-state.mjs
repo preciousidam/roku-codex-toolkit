@@ -22,16 +22,28 @@ function refuse(reason) {
   return { disposition: "refuse", reason };
 }
 
+export function checkoutIsClean(statusOutput, ignoredOutput) {
+  const statusEntries = statusOutput.split("\0").filter(Boolean);
+  if (statusEntries.some((entry) => entry !== "?? .codex-marketplace-install.json")) return false;
+  const disposableCache = /^plugins\/(?:roku-device-toolkit|roku-engineering)\/(?:[^/\r\n]+\/)*__pycache__\/[^/\r\n]+\.py[co]$/;
+  return ignoredOutput.split("\0").filter(Boolean).every((entry) => disposableCache.test(entry));
+}
+
 export function classifyUpgradeState({ marketplaces, plugins, receipt, checkout, targetVersion }) {
+  if (!Array.isArray(marketplaces) || !Array.isArray(plugins)) {
+    return refuse("Codex marketplace or plugin inventory is malformed.");
+  }
   const toolkitMarketplaces = marketplaces.filter((entry) => entry?.name === marketplaceName);
-  const toolkitPlugins = plugins.filter((entry) => (
-    pluginNames.includes(entry?.name) && entry?.marketplaceName === marketplaceName
-  ));
+  const toolkitPlugins = plugins.filter((entry) => entry?.marketplaceName === marketplaceName);
   if (toolkitMarketplaces.length === 0 && toolkitPlugins.length === 0) {
     return refuse("No existing toolkit installation was found; use setup instead.");
   }
   if (toolkitMarketplaces.length !== 1) return refuse("Toolkit marketplace state is missing or ambiguous.");
-  if (toolkitPlugins.length !== 2 || new Set(toolkitPlugins.map((entry) => entry.name)).size !== 2) {
+  if (
+    toolkitPlugins.length !== 2 ||
+    new Set(toolkitPlugins.map((entry) => entry.name)).size !== 2 ||
+    toolkitPlugins.some((entry) => !pluginNames.includes(entry.name))
+  ) {
     return refuse("Toolkit plugin state is partial, duplicated, or orphaned.");
   }
   const marketplace = toolkitMarketplaces[0];

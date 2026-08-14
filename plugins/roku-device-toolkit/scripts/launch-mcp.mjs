@@ -26,7 +26,7 @@ if (!python) {
 
 const child = spawn(python.command, [...python.args, server], {
   cwd: pluginRoot,
-  env: process.env,
+  env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1" },
   stdio: "inherit",
 });
 let terminatingSignal = null;
