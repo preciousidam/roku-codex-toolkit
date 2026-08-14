@@ -18,6 +18,7 @@ const canonicalPages = [
   ["docs/hardware-validation.md", "hardware-validation.md"],
   ["docs/stabilization-audit.md", "stabilization-audit.md"],
   ["docs/npm-distribution.md", "npm-distribution.md"],
+  ["docs/clean-install-smoke.md", "clean-install-smoke.md"],
   ["docs/license-evaluation.md", "license-evaluation.md"],
   ["docs/v0.1.0.md", "v0-1-0.md"],
   ["docs/v0.2.0.md", "v0-2-0.md"],

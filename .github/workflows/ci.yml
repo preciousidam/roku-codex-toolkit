@@ -43,6 +43,33 @@ jobs:
           python-version: "3.13"
       - run: npm run test:package
 
+  published-package-smoke:
+    if: github.event_name == 'pull_request'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            node: 18
+            python: "3.9"
+          - os: macos-latest
+            node: 22
+            python: "3.13"
+          - os: windows-latest
+            node: 22
+            python: "3.13"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node }}
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: npm ci --ignore-scripts
+      - run: node scripts/smoke-published-package.mjs --version 0.2.0
+
   documentation:
     runs-on: ubuntu-latest
     steps:

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
@@ -51,6 +51,101 @@ test("documentation links resolve and onboarding preserves public safety boundar
   assert.match(troubleshooting, /Windows command shims/);
   assert.match(troubleshooting, /port `8060`/);
   assert.match(troubleshooting, /port `8085`/);
+});
+
+test("published-package smoke matrix preserves host-only release evidence", () => {
+  const workflow = fs.readFileSync(path.join(root, ".github", "workflows", "ci.yml"), "utf8").replaceAll("\r\n", "\n");
+  const publishWorkflow = fs.readFileSync(path.join(root, ".github", "workflows", "publish.yml"), "utf8").replaceAll("\r\n", "\n");
+  const smokeJob = workflow.match(/^  published-package-smoke:\n([\s\S]*?)(?=^  [a-z][a-z-]+:\n|(?![\s\S]))/m)?.[0] ?? "";
+  const publishedSmokeJob = publishWorkflow.match(/^  published-package-smoke:\n([\s\S]*?)(?=^  [a-z][a-z-]+:\n|(?![\s\S]))/m)?.[0] ?? "";
+  const script = fs.readFileSync(path.join(root, "scripts", "smoke-published-package.mjs"), "utf8");
+  const report = fs.readFileSync(path.join(root, "docs", "clean-install-smoke.md"), "utf8");
+  const metadata = readJson(path.join(root, "package.json"));
+  assert.match(smokeJob, /os: ubuntu-latest/);
+  assert.match(smokeJob, /os: macos-latest/);
+  assert.match(smokeJob, /os: windows-latest/);
+  assert.match(smokeJob, /node: 18[\s\S]*python: "3\.9"/);
+  assert.match(smokeJob, /smoke-published-package\.mjs --version 0\.2\.0/);
+  assert.match(publishedSmokeJob, /needs: publish/);
+  assert.match(publishedSmokeJob, /smoke-published-package\.mjs --version/);
+  assert.match(publishWorkflow, /smoke-published-package\.mjs --version[^\n]+--check-contract[\s\S]*npm publish/);
+  assert.match(script, /publishedContracts/);
+  assert.match(script, /"0\.2\.0": \{[\s\S]*toolNames:/);
+  assert.match(script, /No published-package contract is defined/);
+  assert.match(script, /Published-package contract \$\{version\} matches \$\{toolCount\} checkout tools/);
+  assert.match(script, /new Set\(toolNames\)\.size !== expectedToolNames\.length/);
+  assert.match(script, /doctorLines\.length !== expectedDoctorChecks\.length/);
+  assert.match(script, /terminateProcessTree\(\)/);
+  assert.match(script, /taskkill/);
+  assert.match(script, /process\.kill\(-child\.pid, "SIGTERM"\)/);
+  assert.match(script, /await terminateProcessTree\(\);\s*throw new Error\(`Packaged MCP initialize returned an invalid result/);
+  assert.match(script, /npm_config_ignore_scripts: "true"/);
+  assert.match(script, /"-c", "core\.autocrlf=false",\s*"clone",[\s\S]*"--branch", `v\$\{version\}`/);
+  for (const runtimeTree of ["bin", "scripts"]) {
+    assert.match(script, new RegExp(`assertIdenticalPackagedTree\\(installedRoot, taggedCheckout, metadata, "${runtimeTree}"\\)`));
+  }
+  assert.match(script, /assertIdenticalTree\(installedRoot, taggedCheckout, "plugins"\)/);
+  assert.ok(script.includes("Published npm ${relative} inventory differs from package.json files"));
+  assert.match(script, /taggedMcpTools: taggedToolCount/);
+  assert.match(script, /Packaged MCP launcher emitted malformed JSON/);
+  assert.match(script, /Packaged MCP launcher emitted an unsolicited response/);
+  assert.doesNotMatch(script, /const responses = new Map/);
+  assert.match(script, /message === null \|\| typeof message !== "object" \|\| Array\.isArray\(message\)/);
+  assert.match(script, /initializeResult\?\.protocolVersion !== "2025-06-18"/);
+  assert.match(script, /typeof initializeResult\.capabilities\.tools !== "object"/);
+  assert.match(script, /expected\.some\(\(command\) => JSON\.stringify\(args\) === JSON\.stringify\(command\)\)/);
+  assert.match(script, /"dependencies", "optionalDependencies", "peerDependencies", "bundledDependencies", "bundleDependencies"/);
+  assert.match(script, /message\.jsonrpc !== "2\.0"/);
+  assert.match(script, /hasResult === hasError/);
+  assert.match(script, /if \(protocolFailure\) throw await protocolFailure/);
+  assert.match(script, /tool\.inputSchema\.type !== "object"/);
+  assert.match(script, /Packaged MCP server exposed invalid tool descriptors/);
+  assert.match(script, /schemaValidator\.compile\(tool\.inputSchema\)/);
+  assert.match(script, /Packaged MCP tool \$\{tool\.name\} exposed an invalid input schema/);
+  assert.match(script, /waitForPublishedPackage/);
+  assert.match(script, /assertMarketplaceManifest\(taggedCheckout/);
+  assert.match(script, /Packaged MCP launcher did not exit after stdin closed/);
+  assert.match(script, /method: "notifications\/initialized"/);
+  assert.match(script, /protocolVersion: "2025-06-18"/);
+  assert.match(script, /ROKU_SMOKE_ALLOW_REMOVALS !== "1"/);
+  assert.match(script, /state\.marketplace\?\.name !== "roku-codex-toolkit"/);
+  assert.match(script, /child\.stdin\.on\("error"/);
+  assert.match(script, /roku-device-toolkit@roku-codex-toolkit/);
+  assert.match(script, /JSON\.stringify\(args\) !== JSON\.stringify\(expected\)/);
+  assert.match(script, /assertDeviceConfigAbsent\(\)/);
+  assert.match(script, /async function terminateChildTree/);
+  assert.match(script, /await terminateChildTree\(child, exit\)/);
+  assert.match(script, /marketplace\.ref !== `v\$\{version\}`/);
+  assert.match(script, /lifecycleScriptsAbsent: "pass"/);
+  assert.match(script, /Published package defines an unexpected implicit node-gyp install hook/);
+  assert.match(script, /metadata\.engines\.node !== ">=18"/);
+  assert.match(script, /metadata\.engines\.python !== ">=3\.9"/);
+  assert.match(script, /Published package declares unexpected runtime engines/);
+  assert.match(script, /Object\.keys\(metadata\.bin \?\? \{\}\)\.join\(","\) !== packageName/);
+  assert.match(script, /Published package declares unexpected executable mappings/);
+  assert.match(report, /manual Codex confirmation/i);
+  assert.match(report, /Physical Roku evidence[\s\S]*Not in scope/i);
+  assert.doesNotMatch(report, /(?:https?:\/\/)?(?:\d{1,3}\.){3}\d{1,3}/);
+  assert.ok(!metadata.files.includes("scripts/smoke-published-package.mjs"));
+
+  const orchestrator = fs.readFileSync(path.join(root, "scripts", "validate-roku-toolkit.mjs"), "utf8");
+  assert.match(orchestrator, /if \(!nodeOnly && !pythonOnly\) \{[\s\S]*smoke-published-package\.mjs[\s\S]*--check-contract/);
+  const smokeScript = path.join(root, "scripts", "smoke-published-package.mjs");
+  const unknownContract = spawnSync(
+    process.execPath,
+    [smokeScript, "--version", "99.0.0", "--check-contract"],
+    { encoding: "utf8" },
+  );
+  assert.notEqual(unknownContract.status, 0);
+  assert.match(unknownContract.stderr, /No published-package contract is defined for 99\.0\.0/);
+});
+
+test("packed-package doctor coverage avoids ambient Windows Codex installations", () => {
+  const script = fs.readFileSync(path.join(root, "scripts", "test-packed-package.mjs"), "utf8");
+  const doctorInvocations = [...script.matchAll(/\[cli, "doctor"([^\]]*)\]/g)];
+  assert.ok(doctorInvocations.some((invocation) => /"--no-codex"/.test(invocation[1])));
+  assert.ok(doctorInvocations.some((invocation) => invocation[1] === ""));
+  assert.match(script, /if \(process\.platform !== "win32"\)/);
 });
 
 test("marketplace entries resolve portably to valid plugin manifests", () => {
