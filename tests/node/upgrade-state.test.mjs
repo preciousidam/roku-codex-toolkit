@@ -56,6 +56,13 @@ test("unreconstructible states are refused", () => {
     { checkout: { ...healthy.checkout, clean: false } },
     { checkout: { ...healthy.checkout, head: "b".repeat(40) } },
     { plugins: healthy.plugins.map((plugin, index) => ({ ...plugin, version: index ? "0.1.0" : "0.2.0" })) },
+    { plugins: [...healthy.plugins, {
+      name: "stale-toolkit-plugin",
+      marketplaceName: "roku-codex-toolkit",
+      version: "0.2.0",
+      installed: true,
+      enabled: true,
+    }] },
   ];
   for (const override of cases) {
     assert.equal(classifyUpgradeState({ ...healthy, ...override }).disposition, "refuse");

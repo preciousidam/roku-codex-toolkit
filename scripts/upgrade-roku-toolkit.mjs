@@ -134,7 +134,7 @@ async function inspectState() {
   }
   try {
     const [status, head, refRevision] = await Promise.all([
-      run("git", ["status", "--porcelain", "--untracked-files=all"], { cwd: root, capture: true }),
+      run("git", ["status", "--porcelain", "--untracked-files=all", "--ignored"], { cwd: root, capture: true }),
       run("git", ["rev-parse", "HEAD"], { cwd: root, capture: true }),
       run("git", ["rev-list", "-n", "1", receipt.ref_name], { cwd: root, capture: true }),
     ]);
