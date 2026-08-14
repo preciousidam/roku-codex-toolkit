@@ -10,6 +10,7 @@ import { buildWindowsShimInvocation, requirePython, requireSupportedNode } from 
 import { acquireToolkitLock } from "./toolkit-lock.mjs";
 import {
   checkoutIsClean,
+  classifyReceiptEntry,
   classifyUpgradeState,
   executeUpgradeTransaction,
   inferReceiptFromCheckout,
@@ -143,13 +144,27 @@ async function inspectState() {
   try { root = fs.realpathSync(marketplace.root); } catch { return { marketplaces, plugins }; }
   const receiptPath = path.join(root, ".codex-marketplace-install.json");
   let receipt;
-  let receiptMissing = false;
   try {
     if (fs.realpathSync(path.dirname(receiptPath)) !== root) throw new Error("unsafe root");
-    receipt = JSON.parse(fs.readFileSync(receiptPath, "utf8"));
+  } catch {
+    return { marketplaces, plugins, receipt: undefined, checkout: undefined };
+  }
+  let receiptEntry;
+  try {
+    receiptEntry = fs.lstatSync(receiptPath);
   } catch (error) {
-    if (error?.code === "ENOENT") receiptMissing = true;
-    else return { marketplaces, plugins, receipt: undefined, checkout: undefined };
+    if (error?.code !== "ENOENT") return { marketplaces, plugins, receipt: undefined, checkout: undefined };
+  }
+  const receiptEntryType = classifyReceiptEntry(receiptEntry);
+  if (receiptEntryType === "unsafe") {
+    return { marketplaces, plugins, receipt: undefined, checkout: undefined };
+  }
+  if (receiptEntryType === "file") {
+    try {
+      receipt = JSON.parse(fs.readFileSync(receiptPath, "utf8"));
+    } catch {
+      return { marketplaces, plugins, receipt: undefined, checkout: undefined };
+    }
   }
   try {
     const common = await Promise.all([
@@ -159,9 +174,9 @@ async function inspectState() {
     ]);
     const [status, ignored, headResult] = common;
     const head = headResult.stdout.trim();
-    if (receiptMissing) {
+    if (receiptEntryType === "missing") {
       const [origin, tags] = await Promise.all([
-        run("git", ["remote", "get-url", "origin"], { cwd: root, capture: true }),
+        run("git", ["config", "--get", "remote.origin.url"], { cwd: root, capture: true }),
         run("git", ["tag", "--points-at", "HEAD", "--list", "v*"], { cwd: root, capture: true }),
       ]);
       receipt = inferReceiptFromCheckout({

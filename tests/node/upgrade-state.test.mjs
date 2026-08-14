@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   checkoutIsClean,
+  classifyReceiptEntry,
   classifyUpgradeState,
   executeUpgradeTransaction,
   inferReceiptFromCheckout,
@@ -93,6 +94,13 @@ test("checkout cleanliness permits only the receipt and Python bytecode caches",
     assert.equal(checkoutIsClean("?? .codex-marketplace-install.json\0", ignored), false);
   }
   assert.equal(checkoutIsClean(" M README.md\0", ""), false);
+});
+
+test("only a regular receipt entry is readable", () => {
+  assert.equal(classifyReceiptEntry(undefined), "missing");
+  assert.equal(classifyReceiptEntry({ isFile: () => true, isSymbolicLink: () => false }), "file");
+  assert.equal(classifyReceiptEntry({ isFile: () => false, isSymbolicLink: () => true }), "unsafe");
+  assert.equal(classifyReceiptEntry({ isFile: () => false, isSymbolicLink: () => false }), "unsafe");
 });
 
 test("a missing receipt is inferred only from one exact canonical version", () => {

@@ -29,6 +29,11 @@ export function checkoutIsClean(statusOutput, ignoredOutput) {
   return ignoredOutput.split("\0").filter(Boolean).every((entry) => disposableCache.test(entry));
 }
 
+export function classifyReceiptEntry(entry) {
+  if (entry === undefined) return "missing";
+  return entry.isFile() && !entry.isSymbolicLink() ? "file" : "unsafe";
+}
+
 export function inferReceiptFromCheckout({ marketplaceSource, origin, tags, head, plugins }) {
   if (
     marketplaceSource?.sourceType !== "git" ||
