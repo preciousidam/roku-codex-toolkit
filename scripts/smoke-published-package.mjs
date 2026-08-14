@@ -269,7 +269,6 @@ async function listPackagedTools(launcher) {
   let stderr = "";
   child.stderr.setEncoding("utf8");
   child.stderr.on("data", (chunk) => { stderr += chunk; });
-  const responses = new Map();
   const waiters = new Map();
   let protocolFailure;
   const lines = readline.createInterface({ input: child.stdout });
@@ -291,8 +290,8 @@ async function listPackagedTools(launcher) {
       clearTimeout(waiter.timer);
       child.off("close", waiter.onExit);
       waiter.resolve(message);
-    } else {
-      responses.set(message.id, message);
+    } else if (Object.hasOwn(message, "id")) {
+      failProtocol(new Error(`Packaged MCP launcher emitted an unsolicited response: ${JSON.stringify(message)}`));
     }
   });
   const exit = new Promise((resolve, reject) => {
@@ -330,7 +329,6 @@ async function listPackagedTools(launcher) {
   }
 
   function responseFor(id) {
-    if (responses.has(id)) return Promise.resolve(responses.get(id));
     if (protocolFailure) return protocolFailure.then((error) => { throw error; });
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -492,6 +490,7 @@ if (args[0] === "--version" || args.join(" ") === "plugin marketplace --help") {
   ];
   if (!expected.some((command) => JSON.stringify(args) === JSON.stringify(command))) process.exit(2);
   const state = read();
+  if (state.marketplace?.name !== "roku-codex-toolkit") process.exit(2);
   const name = args[2].split("@")[0];
   if (!state.plugins.includes(name)) state.plugins.push(name);
   write(state);
@@ -564,6 +563,9 @@ try {
   const metadata = JSON.parse(fs.readFileSync(path.join(installedRoot, "package.json"), "utf8"));
   for (const lifecycle of ["preinstall", "install", "postinstall", "prepare"]) {
     if (metadata.scripts?.[lifecycle]) throw new Error(`Published package defines an unexpected ${lifecycle} script.`);
+  }
+  if (fs.existsSync(path.join(installedRoot, "binding.gyp"))) {
+    throw new Error("Published package defines an unexpected implicit node-gyp install hook.");
   }
   for (const field of ["dependencies", "optionalDependencies", "peerDependencies", "bundledDependencies", "bundleDependencies"]) {
     const value = metadata[field];

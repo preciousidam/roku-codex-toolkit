@@ -84,6 +84,8 @@ test("published-package smoke matrix preserves host-only release evidence", () =
   assert.match(script, /assertIdenticalTree\(installedRoot, taggedCheckout, "plugins"\)/);
   assert.match(script, /taggedMcpTools: taggedToolCount/);
   assert.match(script, /Packaged MCP launcher emitted malformed JSON/);
+  assert.match(script, /Packaged MCP launcher emitted an unsolicited response/);
+  assert.doesNotMatch(script, /const responses = new Map/);
   assert.match(script, /message === null \|\| typeof message !== "object" \|\| Array\.isArray\(message\)/);
   assert.match(script, /initializeResult\?\.protocolVersion !== "2025-06-18"/);
   assert.match(script, /typeof initializeResult\.capabilities\.tools !== "object"/);
@@ -100,6 +102,7 @@ test("published-package smoke matrix preserves host-only release evidence", () =
   assert.match(script, /method: "notifications\/initialized"/);
   assert.match(script, /protocolVersion: "2025-06-18"/);
   assert.match(script, /ROKU_SMOKE_ALLOW_REMOVALS !== "1"/);
+  assert.match(script, /state\.marketplace\?\.name !== "roku-codex-toolkit"/);
   assert.match(script, /child\.stdin\.on\("error"/);
   assert.match(script, /roku-device-toolkit@roku-codex-toolkit/);
   assert.match(script, /JSON\.stringify\(args\) !== JSON\.stringify\(expected\)/);
@@ -108,6 +111,7 @@ test("published-package smoke matrix preserves host-only release evidence", () =
   assert.match(script, /await terminateChildTree\(child, exit\)/);
   assert.match(script, /marketplace\.ref !== `v\$\{version\}`/);
   assert.match(script, /lifecycleScriptsAbsent: "pass"/);
+  assert.match(script, /Published package defines an unexpected implicit node-gyp install hook/);
   assert.match(report, /manual Codex confirmation/i);
   assert.match(report, /Physical Roku evidence[\s\S]*Not in scope/i);
   assert.doesNotMatch(report, /(?:https?:\/\/)?(?:\d{1,3}\.){3}\d{1,3}/);
