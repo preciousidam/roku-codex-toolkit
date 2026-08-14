@@ -81,7 +81,11 @@ test("published-package smoke matrix preserves host-only release evidence", () =
   assert.match(script, /await terminateProcessTree\(\);\s*throw new Error\(`Packaged MCP initialize returned an invalid result/);
   assert.match(script, /npm_config_ignore_scripts: "true"/);
   assert.match(script, /"-c", "core\.autocrlf=false",\s*"clone",[\s\S]*"--branch", `v\$\{version\}`/);
+  for (const runtimeTree of ["bin", "scripts"]) {
+    assert.match(script, new RegExp(`assertIdenticalPackagedTree\\(installedRoot, taggedCheckout, metadata, "${runtimeTree}"\\)`));
+  }
   assert.match(script, /assertIdenticalTree\(installedRoot, taggedCheckout, "plugins"\)/);
+  assert.ok(script.includes("Published npm ${relative} inventory differs from package.json files"));
   assert.match(script, /taggedMcpTools: taggedToolCount/);
   assert.match(script, /Packaged MCP launcher emitted malformed JSON/);
   assert.match(script, /Packaged MCP launcher emitted an unsolicited response/);

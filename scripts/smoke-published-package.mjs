@@ -258,6 +258,25 @@ function assertIdenticalTree(publishedRoot, tagRoot, relative) {
   }
 }
 
+function assertIdenticalPackagedTree(publishedRoot, tagRoot, metadata, relative) {
+  const prefix = `${relative}/`;
+  const expectedFiles = (metadata.files ?? [])
+    .filter((file) => file.startsWith(prefix))
+    .map((file) => file.slice(prefix.length))
+    .sort();
+  const publishedFiles = relativeFiles(path.join(publishedRoot, relative));
+  if (publishedFiles.join("\n") !== expectedFiles.join("\n")) {
+    throw new Error(`Published npm ${relative} inventory differs from package.json files.`);
+  }
+  for (const file of publishedFiles) {
+    const packaged = path.join(publishedRoot, relative, file);
+    const tagged = path.join(tagRoot, relative, file);
+    if (!fs.existsSync(tagged) || !fs.readFileSync(packaged).equals(fs.readFileSync(tagged))) {
+      throw new Error(`Published npm and v${version} differ at ${path.join(relative, file)}.`);
+    }
+  }
+}
+
 async function listPackagedTools(launcher) {
   const child = spawn(process.execPath, [launcher], {
     cwd: temporary,
@@ -596,6 +615,8 @@ try {
     "https://github.com/preciousidam/roku-codex-toolkit.git",
     taggedCheckout,
   ]);
+  assertIdenticalPackagedTree(installedRoot, taggedCheckout, metadata, "bin");
+  assertIdenticalPackagedTree(installedRoot, taggedCheckout, metadata, "scripts");
   assertIdenticalTree(installedRoot, taggedCheckout, "plugins");
   const publishedMarketplace = fs.readFileSync(path.join(installedRoot, ".agents", "plugins", "marketplace.json"));
   const taggedMarketplace = fs.readFileSync(path.join(taggedCheckout, ".agents", "plugins", "marketplace.json"));
