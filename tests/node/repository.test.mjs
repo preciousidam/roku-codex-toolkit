@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
@@ -68,6 +68,7 @@ test("published-package smoke matrix preserves host-only release evidence", () =
   assert.match(smokeJob, /smoke-published-package\.mjs --version 0\.2\.0/);
   assert.match(publishedSmokeJob, /needs: publish/);
   assert.match(publishedSmokeJob, /smoke-published-package\.mjs --version/);
+  assert.match(publishWorkflow, /smoke-published-package\.mjs --version[^\n]+--check-contract[\s\S]*npm publish/);
   assert.match(script, /publishedContracts/);
   assert.match(script, /"0\.2\.0": \{[\s\S]*toolNames:/);
   assert.match(script, /No published-package contract is defined/);
@@ -110,6 +111,16 @@ test("published-package smoke matrix preserves host-only release evidence", () =
   assert.match(report, /Physical Roku evidence[\s\S]*Not in scope/i);
   assert.doesNotMatch(report, /(?:https?:\/\/)?(?:\d{1,3}\.){3}\d{1,3}/);
   assert.ok(!metadata.files.includes("scripts/smoke-published-package.mjs"));
+
+  const smokeScript = path.join(root, "scripts", "smoke-published-package.mjs");
+  execFileSync(process.execPath, [smokeScript, "--version", "0.2.0", "--check-contract"]);
+  const unknownContract = spawnSync(
+    process.execPath,
+    [smokeScript, "--version", "99.0.0", "--check-contract"],
+    { encoding: "utf8" },
+  );
+  assert.notEqual(unknownContract.status, 0);
+  assert.match(unknownContract.stderr, /No published-package contract is defined for 99\.0\.0/);
 });
 
 test("packed-package doctor coverage avoids ambient Windows Codex installations", () => {

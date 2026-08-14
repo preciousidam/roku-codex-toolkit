@@ -31,8 +31,9 @@ const publishedContracts = {
 };
 const arguments_ = process.argv.slice(2);
 const versionIndex = arguments_.indexOf("--version");
-if (versionIndex === -1 || !arguments_[versionIndex + 1] || arguments_.length !== 2) {
-  console.error("Usage: node scripts/smoke-published-package.mjs --version <published-version>");
+const checkContract = arguments_.length === 3 && arguments_[2] === "--check-contract";
+if (versionIndex !== 0 || !arguments_[1] || (arguments_.length !== 2 && !checkContract)) {
+  console.error("Usage: node scripts/smoke-published-package.mjs --version <published-version> [--check-contract]");
   process.exit(2);
 }
 const version = arguments_[versionIndex + 1];
@@ -44,6 +45,10 @@ if (!publishedContract) {
   throw new Error(`No published-package contract is defined for ${version}.`);
 }
 const expectedToolNames = publishedContract.toolNames;
+if (checkContract) {
+  console.log(`Published-package contract ${version} is defined.`);
+  process.exit(0);
+}
 
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "roku-toolkit-published-smoke-"));
 const npmCli = [
