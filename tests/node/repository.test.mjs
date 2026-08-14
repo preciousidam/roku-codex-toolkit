@@ -112,6 +112,11 @@ test("published-package smoke matrix preserves host-only release evidence", () =
   assert.match(script, /marketplace\.ref !== `v\$\{version\}`/);
   assert.match(script, /lifecycleScriptsAbsent: "pass"/);
   assert.match(script, /Published package defines an unexpected implicit node-gyp install hook/);
+  assert.match(script, /metadata\.engines\.node !== ">=18"/);
+  assert.match(script, /metadata\.engines\.python !== ">=3\.9"/);
+  assert.match(script, /Published package declares unexpected runtime engines/);
+  assert.match(script, /Object\.keys\(metadata\.bin \?\? \{\}\)\.join\(","\) !== packageName/);
+  assert.match(script, /Published package declares unexpected executable mappings/);
   assert.match(report, /manual Codex confirmation/i);
   assert.match(report, /Physical Roku evidence[\s\S]*Not in scope/i);
   assert.doesNotMatch(report, /(?:https?:\/\/)?(?:\d{1,3}\.){3}\d{1,3}/);

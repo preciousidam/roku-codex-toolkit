@@ -561,6 +561,19 @@ try {
   await npm(["install", "--ignore-scripts", "--no-audit", "--no-fund", "--prefix", installPrefix, `${packageName}@${version}`]);
   const installedRoot = path.join(installPrefix, "node_modules", packageName);
   const metadata = JSON.parse(fs.readFileSync(path.join(installedRoot, "package.json"), "utf8"));
+  if (
+    Object.keys(metadata.engines ?? {}).sort().join(",") !== "node,python" ||
+    metadata.engines.node !== ">=18" ||
+    metadata.engines.python !== ">=3.9"
+  ) {
+    throw new Error(`Published package declares unexpected runtime engines: ${JSON.stringify(metadata.engines)}`);
+  }
+  if (
+    Object.keys(metadata.bin ?? {}).join(",") !== packageName ||
+    metadata.bin[packageName] !== "./bin/roku-codex-toolkit.mjs"
+  ) {
+    throw new Error(`Published package declares unexpected executable mappings: ${JSON.stringify(metadata.bin)}`);
+  }
   for (const lifecycle of ["preinstall", "install", "postinstall", "prepare"]) {
     if (metadata.scripts?.[lifecycle]) throw new Error(`Published package defines an unexpected ${lifecycle} script.`);
   }
