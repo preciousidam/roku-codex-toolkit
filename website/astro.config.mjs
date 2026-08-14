@@ -21,6 +21,7 @@ export default defineConfig({
             { label: "Overview", slug: "" },
             { label: "Getting started", slug: "getting-started" },
             { label: "Troubleshooting", slug: "troubleshooting" },
+            { label: "Upgrade safety model", slug: "upgrade-state-model" },
           ],
         },
         {

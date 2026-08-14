@@ -79,6 +79,8 @@ and recoverable upgrades while preserving the established Python and Node.js res
 also the [clean-install smoke matrix](docs/clean-install-smoke.md),
 [stabilization audit](docs/stabilization-audit.md),
 [hardware validation matrix](docs/hardware-validation.md), and [contributor guide](CONTRIBUTING.md).
+The proposed upgrade safety boundary is documented in the
+[transactional upgrade state model](docs/upgrade-state-model.md).
 
 ## Roku tooling landscape
 
