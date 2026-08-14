@@ -54,8 +54,8 @@ test("documentation links resolve and onboarding preserves public safety boundar
 });
 
 test("published-package smoke matrix preserves host-only release evidence", () => {
-  const workflow = fs.readFileSync(path.join(root, ".github", "workflows", "ci.yml"), "utf8");
-  const publishWorkflow = fs.readFileSync(path.join(root, ".github", "workflows", "publish.yml"), "utf8");
+  const workflow = fs.readFileSync(path.join(root, ".github", "workflows", "ci.yml"), "utf8").replaceAll("\r\n", "\n");
+  const publishWorkflow = fs.readFileSync(path.join(root, ".github", "workflows", "publish.yml"), "utf8").replaceAll("\r\n", "\n");
   const smokeJob = workflow.match(/^  published-package-smoke:\n([\s\S]*?)(?=^  [a-z][a-z-]+:\n|(?![\s\S]))/m)?.[0] ?? "";
   const publishedSmokeJob = publishWorkflow.match(/^  published-package-smoke:\n([\s\S]*?)(?=^  [a-z][a-z-]+:\n|(?![\s\S]))/m)?.[0] ?? "";
   const script = fs.readFileSync(path.join(root, "scripts", "smoke-published-package.mjs"), "utf8");
@@ -82,6 +82,7 @@ test("published-package smoke matrix preserves host-only release evidence", () =
   assert.match(script, /Packaged MCP launcher emitted malformed JSON/);
   assert.match(script, /message === null \|\| typeof message !== "object" \|\| Array\.isArray\(message\)/);
   assert.match(script, /initializeResult\?\.protocolVersion !== "2025-06-18"/);
+  assert.match(script, /typeof initializeResult\.capabilities\.tools !== "object"/);
   assert.match(script, /expected\.some\(\(command\) => JSON\.stringify\(args\) === JSON\.stringify\(command\)\)/);
   assert.match(script, /"dependencies", "optionalDependencies", "peerDependencies", "bundledDependencies", "bundleDependencies"/);
   assert.match(script, /message\.jsonrpc !== "2\.0"/);

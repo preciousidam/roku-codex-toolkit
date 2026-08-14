@@ -375,6 +375,9 @@ async function listPackagedTools(launcher) {
     initializeResult.capabilities === null ||
     typeof initializeResult.capabilities !== "object" ||
     Array.isArray(initializeResult.capabilities) ||
+    initializeResult.capabilities.tools === null ||
+    typeof initializeResult.capabilities.tools !== "object" ||
+    Array.isArray(initializeResult.capabilities.tools) ||
     typeof initializeResult.serverInfo?.name !== "string" ||
     !initializeResult.serverInfo.name ||
     typeof initializeResult.serverInfo?.version !== "string" ||
