@@ -157,7 +157,7 @@ try {
 if (!skipConfig) {
   requireSuccess(
     run(python.command, [...python.args, configScript], { interactive: true }),
-    "Configuring the Roku development device",
+    "Configuring the Roku development device (the Codex plugins remain installed)",
   );
 }
 

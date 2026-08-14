@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import ctypes
 import getpass
 import json
 import os
@@ -23,7 +24,8 @@ CONFIG_ENV = "ROKU_TOOLKIT_CONFIG"
 DEFAULT_CONFIG = Path("~/.config/roku-device-toolkit/config.json").expanduser()
 KEYCHAIN_SERVICE = "roku-device-toolkit"
 KEYCHAIN_ACCOUNT = "rokudev"
-KEYCHAIN_TIMEOUT_SECONDS = 15
+KEYCHAIN_READ_TIMEOUT_SECONDS = 15
+ERR_SEC_ITEM_NOT_FOUND = -25300
 
 def ensure_private_directory(path: Path, harden_existing: bool = False) -> None:
     """Create missing directories privately without changing an existing parent."""
@@ -126,7 +128,7 @@ def keychain_password() -> str:
             text=True,
             capture_output=True,
             check=False,
-            timeout=KEYCHAIN_TIMEOUT_SECONDS,
+            timeout=KEYCHAIN_READ_TIMEOUT_SECONDS,
         )
     except (OSError, subprocess.TimeoutExpired):
         return ""
@@ -135,27 +137,83 @@ def keychain_password() -> str:
     return ""
 
 
+def _store_keychain_password_native(password: str) -> int:
+    security = ctypes.CDLL("/System/Library/Frameworks/Security.framework/Security")
+    core_foundation = ctypes.CDLL(
+        "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation"
+    )
+    item = ctypes.c_void_p()
+    service = KEYCHAIN_SERVICE.encode("utf-8")
+    account = KEYCHAIN_ACCOUNT.encode("utf-8")
+    secret = password.encode("utf-8")
+
+    security.SecKeychainFindGenericPassword.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.c_char_p,
+        ctypes.c_uint32,
+        ctypes.c_char_p,
+        ctypes.POINTER(ctypes.c_uint32),
+        ctypes.POINTER(ctypes.c_void_p),
+        ctypes.POINTER(ctypes.c_void_p),
+    ]
+    security.SecKeychainFindGenericPassword.restype = ctypes.c_int32
+    security.SecKeychainItemModifyContent.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.c_char_p,
+    ]
+    security.SecKeychainItemModifyContent.restype = ctypes.c_int32
+    security.SecKeychainAddGenericPassword.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.c_char_p,
+        ctypes.c_uint32,
+        ctypes.c_char_p,
+        ctypes.c_uint32,
+        ctypes.c_char_p,
+        ctypes.POINTER(ctypes.c_void_p),
+    ]
+    security.SecKeychainAddGenericPassword.restype = ctypes.c_int32
+    core_foundation.CFRelease.argtypes = [ctypes.c_void_p]
+
+    status = security.SecKeychainFindGenericPassword(
+        None, len(service), service, len(account), account, None, None, ctypes.byref(item)
+    )
+    if status == 0:
+        try:
+            return security.SecKeychainItemModifyContent(
+                item, None, len(secret), secret
+            )
+        finally:
+            core_foundation.CFRelease(item)
+    if status != ERR_SEC_ITEM_NOT_FOUND:
+        return status
+    return security.SecKeychainAddGenericPassword(
+        None, len(service), service, len(account), account, len(secret), secret, None
+    )
+
+
 def store_keychain_password(password: str) -> None:
     if sys.platform != "darwin":
         raise RuntimeError("Secure password setup currently requires macOS Keychain.")
     if not password:
-        raise ValueError("Developer password cannot be empty.")
-    try:
-        completed = subprocess.run(
-            [
-                "security", "add-generic-password", "-U", "-a", KEYCHAIN_ACCOUNT,
-                "-s", KEYCHAIN_SERVICE, "-l", "Roku developer password", "-w",
-            ],
-            input=password + "\n",
-            text=True,
-            capture_output=True,
-            check=False,
-            timeout=KEYCHAIN_TIMEOUT_SECONDS,
+        raise ValueError(
+            "Developer password cannot be empty; the existing Keychain item was unchanged."
         )
-    except (OSError, subprocess.TimeoutExpired) as error:
-        raise RuntimeError("Unable to store the password in macOS Keychain.") from error
-    if completed.returncode != 0:
-        raise RuntimeError(completed.stderr.strip() or "Unable to store the password in macOS Keychain.")
+    try:
+        status = _store_keychain_password_native(password)
+    except KeyboardInterrupt as error:
+        raise RuntimeError("Password storage was cancelled; the Roku target remains saved.") from error
+    except (OSError, UnicodeError) as error:
+        raise RuntimeError(
+            "Unable to access macOS Keychain password storage; the Roku target remains saved."
+        ) from error
+    if status != 0:
+        raise RuntimeError(
+            "macOS Keychain did not store the password; the Roku target remains saved."
+        )
 
 
 def configuration_status() -> dict[str, Any]:

@@ -31,6 +31,34 @@ server = load("roku_server_test", "plugins/roku-device-toolkit/mcp/server.py")
 
 
 class ConfigurationTests(unittest.TestCase):
+    def test_keychain_storage_uses_native_api_without_subprocess(self):
+        with mock.patch.object(config.sys, "platform", "darwin"), \
+             mock.patch.object(config, "_store_keychain_password_native", return_value=0) as store, \
+             mock.patch.object(config.subprocess, "run") as run:
+            config.store_keychain_password("developer-secret")
+        store.assert_called_once_with("developer-secret")
+        run.assert_not_called()
+
+    def test_keychain_rejects_empty_password_before_native_update(self):
+        with mock.patch.object(config.sys, "platform", "darwin"), \
+             mock.patch.object(config, "_store_keychain_password_native") as store, \
+             self.assertRaisesRegex(ValueError, "cannot be empty.*unchanged"):
+            config.store_keychain_password("")
+        store.assert_not_called()
+
+    def test_keychain_cancellation_is_actionable(self):
+        with mock.patch.object(config.sys, "platform", "darwin"), \
+             mock.patch.object(config, "_store_keychain_password_native", side_effect=KeyboardInterrupt), \
+             self.assertRaisesRegex(RuntimeError, "cancelled.*target remains saved"):
+            config.store_keychain_password("developer-secret")
+
+    def test_keychain_nonzero_status_does_not_expose_secret(self):
+        with mock.patch.object(config.sys, "platform", "darwin"), \
+             mock.patch.object(config, "_store_keychain_password_native", return_value=-1), \
+             self.assertRaisesRegex(RuntimeError, "did not store.*target remains saved") as raised:
+            config.store_keychain_password("developer-secret")
+        self.assertNotIn("developer-secret", str(raised.exception))
+
     def test_target_rejects_urls_and_ports(self):
         for value in ("", "http://roku", "roku:8060", "user@roku"):
             with self.subTest(value=value), self.assertRaises(ValueError):
