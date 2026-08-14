@@ -30,6 +30,23 @@ const publishedContracts = {
       "take_screenshot",
     ],
   },
+  "0.3.0": {
+    toolNames: [
+      "active_app",
+      "collect_logs",
+      "configuration_status",
+      "configure_target",
+      "device_info",
+      "enter_text",
+      "launch",
+      "list_apps",
+      "player_state",
+      "press",
+      "run_flow",
+      "sideload",
+      "take_screenshot",
+    ],
+  },
 };
 const arguments_ = process.argv.slice(2);
 const versionIndex = arguments_.indexOf("--version");
