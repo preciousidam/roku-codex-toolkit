@@ -60,7 +60,12 @@ test("published-package smoke matrix preserves host-only release evidence", () =
   const metadata = readJson(path.join(root, "package.json"));
   assert.match(workflow, /os: \[ubuntu-latest, macos-latest, windows-latest\]/);
   assert.match(workflow, /smoke-published-package\.mjs --version 0\.2\.0/);
-  assert.match(script, /tools\.length !== 13/);
+  assert.match(script, /expectedToolNames/);
+  assert.match(script, /new Set\(toolNames\)\.size !== expectedToolNames\.length/);
+  assert.match(script, /doctorLines\.length !== expectedDoctorChecks\.length/);
+  assert.match(script, /terminateProcessTree\(\)/);
+  assert.match(script, /taskkill/);
+  assert.match(script, /process\.kill\(-child\.pid, "SIGTERM"\)/);
   assert.match(script, /marketplace\.ref !== `v\$\{version\}`/);
   assert.match(script, /lifecycleScriptsAbsent: "pass"/);
   assert.match(report, /manual Codex confirmation/i);

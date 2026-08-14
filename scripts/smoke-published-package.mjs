@@ -10,6 +10,21 @@ import readline from "node:readline";
 import { findPython } from "./runtime-support.mjs";
 
 const packageName = "roku-codex-toolkit";
+const expectedToolNames = [
+  "active_app",
+  "collect_logs",
+  "configuration_status",
+  "configure_target",
+  "device_info",
+  "enter_text",
+  "launch",
+  "list_apps",
+  "player_state",
+  "press",
+  "run_flow",
+  "sideload",
+  "take_screenshot",
+];
 const arguments_ = process.argv.slice(2);
 const versionIndex = arguments_.indexOf("--version");
 if (versionIndex === -1 || !arguments_[versionIndex + 1] || arguments_.length !== 2) {
@@ -93,6 +108,7 @@ function assertFreshInstallState() {
 async function listPackagedTools(launcher) {
   const child = spawn(process.execPath, [launcher], {
     cwd: temporary,
+    detached: process.platform !== "win32",
     env: smokeEnvironment,
     stdio: ["pipe", "pipe", "pipe"],
   });
@@ -119,13 +135,54 @@ async function listPackagedTools(launcher) {
     child.once("close", resolve);
   });
 
+  async function terminateProcessTree() {
+    if (child.exitCode !== null) return;
+    child.stdin.destroy();
+    const waitForExit = (timeoutMs) => Promise.race([
+      exit.then(() => true, () => true),
+      new Promise((resolve) => setTimeout(() => resolve(false), timeoutMs)),
+    ]);
+    if (process.platform === "win32") {
+      const killed = spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
+        encoding: "utf8",
+        timeout: 10_000,
+      });
+      if (killed.error || killed.status !== 0) child.kill();
+    } else {
+      try {
+        process.kill(-child.pid, "SIGTERM");
+      } catch {
+        child.kill("SIGTERM");
+      }
+    }
+    if (!(await waitForExit(5_000))) {
+      if (process.platform === "win32") {
+        child.kill();
+      } else {
+        try {
+          process.kill(-child.pid, "SIGKILL");
+        } catch {
+          child.kill("SIGKILL");
+        }
+      }
+      if (!(await waitForExit(5_000))) {
+        throw new Error(`process tree ${child.pid} did not exit after forced termination`);
+      }
+    }
+  }
+
   function responseFor(id) {
     if (responses.has(id)) return Promise.resolve(responses.get(id));
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         child.off("close", onExit);
         waiters.delete(id);
-        reject(new Error(`Packaged MCP launcher timed out waiting for response ${id}.`));
+        void terminateProcessTree().then(
+          () => reject(new Error(`Packaged MCP launcher timed out waiting for response ${id}.`)),
+          (error) => reject(new Error(
+            `Packaged MCP launcher timed out waiting for response ${id}; termination failed: ${error.message}`,
+          )),
+        );
       }, 30_000);
       const onExit = (code) => {
         clearTimeout(timer);
@@ -154,9 +211,14 @@ async function listPackagedTools(launcher) {
   const exitCode = await exit;
   if (exitCode !== 0) throw new Error(`Packaged MCP launcher failed:\n${stderr}`);
   const tools = toolsResponse.result?.tools;
-  if (!Array.isArray(tools) || tools.length !== 13) {
+  const toolNames = Array.isArray(tools) ? tools.map((tool) => tool?.name).sort() : [];
+  if (
+    !Array.isArray(tools) ||
+    new Set(toolNames).size !== expectedToolNames.length ||
+    toolNames.join(",") !== expectedToolNames.join(",")
+  ) {
     throw new Error(
-      `Packaged MCP server exposed ${tools?.length ?? "no"} tools; expected 13. ` +
+      `Packaged MCP server exposed an unexpected tool inventory: ${toolNames.join(", ") || "none"}. ` +
       `Response: ${JSON.stringify(toolsResponse)}`,
     );
   }
@@ -227,7 +289,14 @@ const smokeEnvironment = {
 
 try {
   const doctor = npx(["doctor", "--no-codex"]);
-  if (!doctor.stdout.split(/\r?\n/).filter(Boolean).every((line) => line.startsWith("ok - "))) {
+  const doctorLines = doctor.stdout.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const expectedDoctorChecks = ["Git", "Node.js >=18", "Python >=3.9"];
+  const doctorChecks = doctorLines.map((line) => line.match(/^ok - (.+?) \(/)?.[1]).sort();
+  if (
+    doctorLines.length !== expectedDoctorChecks.length ||
+    doctorChecks.some((name) => !name) ||
+    doctorChecks.join(",") !== expectedDoctorChecks.join(",")
+  ) {
     throw new Error(`Published doctor reported an unexpected result:\n${doctor.stdout}`);
   }
 
