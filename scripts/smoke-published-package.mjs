@@ -45,10 +45,6 @@ if (!publishedContract) {
   throw new Error(`No published-package contract is defined for ${version}.`);
 }
 const expectedToolNames = publishedContract.toolNames;
-if (checkContract) {
-  console.log(`Published-package contract ${version} is defined.`);
-  process.exit(0);
-}
 
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "roku-toolkit-published-smoke-"));
 const npmCli = [
@@ -533,7 +529,17 @@ const smokeEnvironment = {
 };
 
 try {
-  await waitForPublishedPackage();
+  if (checkContract) {
+    const toolCount = await listPackagedTools(path.join(
+      process.cwd(),
+      "plugins",
+      "roku-device-toolkit",
+      "scripts",
+      "launch-mcp.mjs",
+    ));
+    console.log(`Published-package contract ${version} matches ${toolCount} checkout tools.`);
+  } else {
+    await waitForPublishedPackage();
   const doctor = await npx(["doctor", "--no-codex"]);
   const doctorLines = doctor.stdout.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const expectedDoctorChecks = ["Git", "Node.js >=18", "Python >=3.9"];
@@ -636,6 +642,7 @@ try {
       physicalRokuEvidence: "not in scope",
     },
   }, null, 2));
+  }
 } finally {
   fs.rmSync(temporary, { recursive: true, force: true });
 }
