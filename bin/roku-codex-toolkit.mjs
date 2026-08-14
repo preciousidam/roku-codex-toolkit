@@ -51,7 +51,11 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
     // parent handler installed prevents the wrapper from exiting while the
     // upgrade child performs bounded rollback.
     interruptedSignal ??= signal;
-    if (child.connected) child.send({ type: "roku-toolkit-cancel", signal });
+    if (command === "upgrade" && child.connected) {
+      child.send({ type: "roku-toolkit-cancel", signal });
+    } else {
+      try { child.kill(signal); } catch {}
+    }
   });
 }
 const result = await new Promise((resolve) => {
