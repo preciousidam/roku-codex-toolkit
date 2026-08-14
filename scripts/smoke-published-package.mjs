@@ -88,8 +88,13 @@ function readState() {
   return JSON.parse(fs.readFileSync(stateFile, "utf8"));
 }
 
-function fakeCodexCommand(args) {
-  return run(process.execPath, [fakeCodex, ...args]);
+function fakeCodexCommand(args, options = {}) {
+  return run(process.execPath, [fakeCodex, ...args], {
+    env: {
+      ...smokeEnvironment,
+      ROKU_SMOKE_ALLOW_REMOVALS: options.allowRemovals ? "1" : "0",
+    },
+  });
 }
 
 function assertFreshInstallState() {
@@ -147,13 +152,22 @@ async function listPackagedTools(launcher) {
   child.stderr.on("data", (chunk) => { stderr += chunk; });
   const responses = new Map();
   const waiters = new Map();
+  let protocolFailure;
   const lines = readline.createInterface({ input: child.stdout });
   lines.on("line", (line) => {
-    const message = JSON.parse(line);
+    let message;
+    try {
+      message = JSON.parse(line);
+    } catch (error) {
+      failProtocol(new Error(`Packaged MCP launcher emitted malformed JSON: ${JSON.stringify(line)} (${error.message})`));
+      return;
+    }
     const waiter = waiters.get(message.id);
     if (waiter) {
       waiters.delete(message.id);
-      waiter(message);
+      clearTimeout(waiter.timer);
+      child.off("close", waiter.onExit);
+      waiter.resolve(message);
     } else {
       responses.set(message.id, message);
     }
@@ -165,13 +179,19 @@ async function listPackagedTools(launcher) {
     child.once("close", resolve);
   });
 
+  function waitUntilClosed(timeoutMs) {
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => resolve(false), timeoutMs);
+      exit.then(
+        () => { clearTimeout(timer); resolve(true); },
+        () => { clearTimeout(timer); resolve(true); },
+      );
+    });
+  }
+
   async function terminateProcessTree() {
     if (child.exitCode !== null) return;
     child.stdin.destroy();
-    const waitForExit = (timeoutMs) => Promise.race([
-      exit.then(() => true, () => true),
-      new Promise((resolve) => setTimeout(() => resolve(false), timeoutMs)),
-    ]);
     if (process.platform === "win32") {
       const killed = spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
         encoding: "utf8",
@@ -185,7 +205,7 @@ async function listPackagedTools(launcher) {
         child.kill("SIGTERM");
       }
     }
-    if (!(await waitForExit(5_000))) {
+    if (!(await waitUntilClosed(5_000))) {
       if (process.platform === "win32") {
         child.kill();
       } else {
@@ -195,14 +215,35 @@ async function listPackagedTools(launcher) {
           child.kill("SIGKILL");
         }
       }
-      if (!(await waitForExit(5_000))) {
+      if (!(await waitUntilClosed(5_000))) {
         throw new Error(`process tree ${child.pid} did not exit after forced termination`);
       }
     }
   }
 
+  function failProtocol(error) {
+    if (protocolFailure) return;
+    protocolFailure = (async () => {
+      try {
+        await terminateProcessTree();
+        return error;
+      } catch (terminationError) {
+        return new Error(`${error.message}; termination failed: ${terminationError.message}`);
+      }
+    })();
+    void protocolFailure.then((failure) => {
+      for (const [id, waiter] of waiters) {
+        clearTimeout(waiter.timer);
+        child.off("close", waiter.onExit);
+        waiter.reject(failure);
+        waiters.delete(id);
+      }
+    });
+  }
+
   function responseFor(id) {
     if (responses.has(id)) return Promise.resolve(responses.get(id));
+    if (protocolFailure) return protocolFailure.then((error) => { throw error; });
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         child.off("close", onExit);
@@ -220,26 +261,46 @@ async function listPackagedTools(launcher) {
         reject(new Error(`Packaged MCP launcher exited with ${code} before response ${id}:\n${stderr}`));
       };
       child.once("close", onExit);
-      waiters.set(id, (message) => {
-        clearTimeout(timer);
-        child.off("close", onExit);
-        resolve(message);
-      });
+      waiters.set(id, { resolve, reject, timer, onExit });
     });
   }
 
   const initialize = responseFor(1);
-  child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} })}\n`);
+  child.stdin.write(`${JSON.stringify({
+    jsonrpc: "2.0",
+    id: 1,
+    method: "initialize",
+    params: {
+      protocolVersion: "2025-06-18",
+      capabilities: {},
+      clientInfo: { name: "roku-codex-toolkit-smoke", version: "1.0.0" },
+    },
+  })}\n`);
   const initializeResponse = await initialize;
   if (!initializeResponse.result) {
     await terminateProcessTree();
     throw new Error(`Packaged MCP initialize failed: ${JSON.stringify(initializeResponse.error)}`);
   }
+  child.stdin.write(`${JSON.stringify({
+    jsonrpc: "2.0",
+    method: "notifications/initialized",
+    params: {},
+  })}\n`);
   const toolsList = responseFor(2);
   child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} })}\n`);
   const toolsResponse = await toolsList;
   child.stdin.end();
-  const exitCode = await exit;
+  const exitCode = await Promise.race([
+    exit,
+    new Promise((resolve) => {
+      const timer = setTimeout(() => resolve(Symbol.for("shutdown-timeout")), 10_000);
+      timer.unref?.();
+    }),
+  ]);
+  if (exitCode === Symbol.for("shutdown-timeout")) {
+    await terminateProcessTree();
+    throw new Error("Packaged MCP launcher did not exit after stdin closed.");
+  }
   if (exitCode !== 0) throw new Error(`Packaged MCP launcher failed:\n${stderr}`);
   const tools = toolsResponse.result?.tools;
   const toolNames = Array.isArray(tools) ? tools.map((tool) => tool?.name).sort() : [];
@@ -280,6 +341,7 @@ if (args[0] === "--version" || args.join(" ") === "plugin marketplace --help") {
   state.marketplace = { name: "roku-codex-toolkit", source: args[3], ref: args[5] ?? null };
   write(state);
 } else if (args.join(" ") === "plugin marketplace remove roku-codex-toolkit") {
+  if (process.env.ROKU_SMOKE_ALLOW_REMOVALS !== "1") process.exit(2);
   const state = read();
   state.marketplace = null;
   write(state);
@@ -289,6 +351,7 @@ if (args[0] === "--version" || args.join(" ") === "plugin marketplace --help") {
   if (!state.plugins.includes(name)) state.plugins.push(name);
   write(state);
 } else if (args[0] === "plugin" && args[1] === "remove") {
+  if (process.env.ROKU_SMOKE_ALLOW_REMOVALS !== "1") process.exit(2);
   const state = read();
   const name = args[2].split("@")[0];
   state.plugins = state.plugins.filter((plugin) => plugin !== name);
@@ -317,6 +380,7 @@ const smokeEnvironment = {
   npm_config_ignore_scripts: "true",
   ROKU_SMOKE_STATE: stateFile,
   ROKU_SMOKE_EVENTS: eventFile,
+  ROKU_SMOKE_ALLOW_REMOVALS: "0",
 };
 
 try {
@@ -376,9 +440,9 @@ try {
   ));
 
   for (const plugin of ["roku-device-toolkit", "roku-engineering"]) {
-    fakeCodexCommand(["plugin", "remove", `${plugin}@${packageName}`]);
+    fakeCodexCommand(["plugin", "remove", `${plugin}@${packageName}`], { allowRemovals: true });
   }
-  fakeCodexCommand(["plugin", "marketplace", "remove", packageName]);
+  fakeCodexCommand(["plugin", "marketplace", "remove", packageName], { allowRemovals: true });
   const removed = readState();
   if (removed.marketplace || removed.plugins.length !== 0) {
     throw new Error("Documented uninstall commands left toolkit state behind.");

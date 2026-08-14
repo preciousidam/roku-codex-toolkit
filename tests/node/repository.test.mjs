@@ -71,6 +71,11 @@ test("published-package smoke matrix preserves host-only release evidence", () =
   assert.match(script, /"-c", "core\.autocrlf=false",\s*"clone",[\s\S]*"--branch", `v\$\{version\}`/);
   assert.match(script, /assertIdenticalTree\(installedRoot, taggedCheckout, "plugins"\)/);
   assert.match(script, /taggedMcpTools: taggedToolCount/);
+  assert.match(script, /Packaged MCP launcher emitted malformed JSON/);
+  assert.match(script, /Packaged MCP launcher did not exit after stdin closed/);
+  assert.match(script, /method: "notifications\/initialized"/);
+  assert.match(script, /protocolVersion: "2025-06-18"/);
+  assert.match(script, /ROKU_SMOKE_ALLOW_REMOVALS !== "1"/);
   assert.match(script, /marketplace\.ref !== `v\$\{version\}`/);
   assert.match(script, /lifecycleScriptsAbsent: "pass"/);
   assert.match(report, /manual Codex confirmation/i);
