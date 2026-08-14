@@ -12,6 +12,7 @@ import {
   checkoutIsClean,
   classifyUpgradeState,
   executeUpgradeTransaction,
+  inferReceiptFromCheckout,
   upgradeInventory,
 } from "./upgrade-state.mjs";
 
@@ -142,31 +143,55 @@ async function inspectState() {
   try { root = fs.realpathSync(marketplace.root); } catch { return { marketplaces, plugins }; }
   const receiptPath = path.join(root, ".codex-marketplace-install.json");
   let receipt;
+  let receiptMissing = false;
   try {
     if (fs.realpathSync(path.dirname(receiptPath)) !== root) throw new Error("unsafe root");
     receipt = JSON.parse(fs.readFileSync(receiptPath, "utf8"));
-  } catch {
-    return { marketplaces, plugins, receipt: undefined, checkout: undefined };
+  } catch (error) {
+    if (error?.code === "ENOENT") receiptMissing = true;
+    else return { marketplaces, plugins, receipt: undefined, checkout: undefined };
   }
   try {
-    const [status, ignored, head, refRevision] = await Promise.all([
+    const common = await Promise.all([
       run("git", ["status", "--porcelain=v1", "-z", "--untracked-files=all"], { cwd: root, capture: true }),
       run("git", ["ls-files", "-z", "--others", "--ignored", "--exclude-standard"], { cwd: root, capture: true }),
       run("git", ["rev-parse", "HEAD"], { cwd: root, capture: true }),
-      run("git", ["rev-list", "-n", "1", receipt.ref_name], { cwd: root, capture: true }),
     ]);
+    const [status, ignored, headResult] = common;
+    const head = headResult.stdout.trim();
+    if (receiptMissing) {
+      const [origin, tags] = await Promise.all([
+        run("git", ["remote", "get-url", "origin"], { cwd: root, capture: true }),
+        run("git", ["tag", "--points-at", "HEAD", "--list", "v*"], { cwd: root, capture: true }),
+      ]);
+      receipt = inferReceiptFromCheckout({
+        marketplaceSource: marketplace.marketplaceSource,
+        origin: origin.stdout.trim(),
+        tags: tags.stdout.split(/\r?\n/).filter(Boolean),
+        head,
+        plugins,
+      });
+      if (!receipt) return { marketplaces, plugins, receipt: undefined, checkout: undefined };
+      return {
+        marketplaces,
+        plugins,
+        receipt,
+        checkout: { clean: checkoutIsClean(status.stdout, ignored.stdout), head, refRevision: head },
+      };
+    }
+    const refRevision = await run("git", ["rev-list", "-n", "1", receipt.ref_name], { cwd: root, capture: true });
     return {
       marketplaces,
       plugins,
       receipt,
       checkout: {
         clean: checkoutIsClean(status.stdout, ignored.stdout),
-        head: head.stdout.trim(),
+        head,
         refRevision: refRevision.stdout.trim(),
       },
     };
   } catch {
-    return { marketplaces, plugins, receipt, checkout: undefined };
+    return { marketplaces, plugins, receipt: undefined, checkout: undefined };
   }
 }
 

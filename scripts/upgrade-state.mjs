@@ -29,6 +29,34 @@ export function checkoutIsClean(statusOutput, ignoredOutput) {
   return ignoredOutput.split("\0").filter(Boolean).every((entry) => disposableCache.test(entry));
 }
 
+export function inferReceiptFromCheckout({ marketplaceSource, origin, tags, head, plugins }) {
+  if (
+    marketplaceSource?.sourceType !== "git" ||
+    !canonicalSources.has(marketplaceSource.source) ||
+    origin !== marketplaceSource.source ||
+    !/^[0-9a-f]{40}$/.test(head ?? "") ||
+    !Array.isArray(tags) ||
+    !Array.isArray(plugins)
+  ) return undefined;
+  const stableTags = [...new Set(tags.filter((tag) => /^v\d+\.\d+\.\d+$/.test(tag)))];
+  if (stableTags.length !== 1) return undefined;
+  const version = stableTags[0].slice(1);
+  const toolkitPlugins = plugins.filter((entry) => entry?.marketplaceName === marketplaceName);
+  if (
+    toolkitPlugins.length !== 2 ||
+    new Set(toolkitPlugins.map((entry) => entry.name)).size !== 2 ||
+    toolkitPlugins.some((entry) => !pluginNames.includes(entry.name) || entry.version !== version)
+  ) return undefined;
+  return {
+    source_type: "git",
+    source: marketplaceSource.source,
+    ref_name: stableTags[0],
+    sparse_paths: [],
+    revision: head,
+    inferred: true,
+  };
+}
+
 export function classifyUpgradeState({ marketplaces, plugins, receipt, checkout, targetVersion }) {
   if (!Array.isArray(marketplaces) || !Array.isArray(plugins)) {
     return refuse("Codex marketplace or plugin inventory is malformed.");

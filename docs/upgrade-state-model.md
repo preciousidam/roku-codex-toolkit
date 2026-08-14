@@ -13,15 +13,19 @@ The installer may use only bounded, read-only inspection before deciding whether
   and location.
 - `codex plugin list --json` provides plugin ID, name, marketplace, version, installed state, and
   enabled state.
-- A Git marketplace root contains Codex's `.codex-marketplace-install.json` receipt with
+- A Git marketplace root may contain Codex's `.codex-marketplace-install.json` receipt with
   `source_type`, `source`, `ref_name`, `sparse_paths`, and `revision`.
 - Bounded Git commands can confirm that the root has no changes other than Codex's expected
   untracked receipt, its `HEAD` equals the receipt revision, and the recorded ref resolves to that
   revision.
 - A bounded remote lookup can confirm that the target release tag exists before mutation.
 
-The receipt is required because the marketplace-list response does not expose the configured Git
-ref. Inferring a ref only from plugin versions or the current commit is not sufficient for rollback.
+When the receipt exists, it is required and must be valid. Some current Codex installations omit
+it. In that case only, the toolkit may reconstruct equivalent metadata when the marketplace and Git
+origin are the same canonical public source, `HEAD` has exactly one stable `v<semver>` tag, both
+installed plugin versions equal that tag, and every other checkout-safety condition passes. A
+malformed receipt, multiple matching tags, or inference from plugin versions or a commit alone is
+not sufficient for rollback.
 
 Codex currently reports whether a plugin is disabled but exposes no plugin enable/disable command.
 Therefore an intentional disabled choice cannot be restored transactionally and must not be
@@ -32,14 +36,14 @@ mutated.
 | State | Required observations | Disposition |
 | --- | --- | --- |
 | Fresh | No toolkit marketplace and no toolkit plugin entries | Use existing `setup`; `upgrade` refuses because there is nothing to upgrade. |
-| Supported healthy version | One official Git marketplace; valid receipt for `preciousidam/roku-codex-toolkit`; immutable `v<semver>` ref and matching revision; clean root; exactly both toolkit plugins installed from that marketplace at the same version; both enabled | Transactional upgrade is permitted. |
+| Supported healthy version | One official Git marketplace; valid receipt or the strict receipt-less reconstruction above; immutable `v<semver>` ref and matching revision; clean root; exactly both toolkit plugins installed from that marketplace at the same version; both enabled | Transactional upgrade is permitted. |
 | Already at target | Supported healthy state whose receipt ref, revision, and both plugin versions match the requested package version | Successful no-op after preflight; no mutation. |
 | Disabled choice | Either toolkit plugin has `enabled: false` | Refuse without mutation because the choice cannot be restored through the public CLI. |
 | Orphaned | Toolkit plugins exist without the toolkit marketplace | Refuse without mutation. |
 | Partial or mixed | Only one plugin exists, duplicate toolkit entries exist, versions differ, or installed state is ambiguous | Refuse without mutation. |
 | Local or unversioned | Marketplace is local, source metadata is missing, ref is absent, or ref is not an immutable semantic-version tag | Refuse without mutation. |
 | Untrusted source | Source is not the canonical public repository or the receipt and marketplace source disagree | Refuse without mutation. |
-| Unverifiable checkout | Receipt is missing/malformed, receipt path is unsafe, root is dirty, `HEAD` or ref differs from the receipt, or bounded Git inspection fails | Refuse without mutation. |
+| Unverifiable checkout | Receipt is malformed, a missing receipt cannot be reconstructed exactly, receipt path is unsafe, root is dirty, `HEAD` or ref differs from verified metadata, or bounded Git inspection fails | Refuse without mutation. |
 | Newer/equal incompatible request | Target is older than the installed version, or metadata cannot establish an ordered semantic version | Refuse without mutation; downgrade is not an upgrade. |
 
 Refusal is a successful safety outcome. Diagnostics should identify the category and point to the
