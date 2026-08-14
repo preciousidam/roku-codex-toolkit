@@ -68,7 +68,9 @@ test("published-package smoke matrix preserves host-only release evidence", () =
   assert.match(smokeJob, /smoke-published-package\.mjs --version 0\.2\.0/);
   assert.match(publishedSmokeJob, /needs: publish/);
   assert.match(publishedSmokeJob, /smoke-published-package\.mjs --version/);
-  assert.match(script, /expectedToolNames/);
+  assert.match(script, /publishedContracts/);
+  assert.match(script, /"0\.2\.0": \{[\s\S]*toolNames:/);
+  assert.match(script, /No published-package contract is defined/);
   assert.match(script, /new Set\(toolNames\)\.size !== expectedToolNames\.length/);
   assert.match(script, /doctorLines\.length !== expectedDoctorChecks\.length/);
   assert.match(script, /terminateProcessTree\(\)/);
@@ -87,6 +89,9 @@ test("published-package smoke matrix preserves host-only release evidence", () =
   assert.match(script, /"dependencies", "optionalDependencies", "peerDependencies", "bundledDependencies", "bundleDependencies"/);
   assert.match(script, /message\.jsonrpc !== "2\.0"/);
   assert.match(script, /hasResult === hasError/);
+  assert.match(script, /if \(protocolFailure\) throw await protocolFailure/);
+  assert.match(script, /tool\.inputSchema\.type !== "object"/);
+  assert.match(script, /Packaged MCP server exposed invalid tool descriptors/);
   assert.match(script, /waitForPublishedPackage/);
   assert.match(script, /assertMarketplaceManifest\(taggedCheckout/);
   assert.match(script, /Packaged MCP launcher did not exit after stdin closed/);

@@ -10,21 +10,25 @@ import readline from "node:readline";
 import { findPython } from "./runtime-support.mjs";
 
 const packageName = "roku-codex-toolkit";
-const expectedToolNames = [
-  "active_app",
-  "collect_logs",
-  "configuration_status",
-  "configure_target",
-  "device_info",
-  "enter_text",
-  "launch",
-  "list_apps",
-  "player_state",
-  "press",
-  "run_flow",
-  "sideload",
-  "take_screenshot",
-];
+const publishedContracts = {
+  "0.2.0": {
+    toolNames: [
+      "active_app",
+      "collect_logs",
+      "configuration_status",
+      "configure_target",
+      "device_info",
+      "enter_text",
+      "launch",
+      "list_apps",
+      "player_state",
+      "press",
+      "run_flow",
+      "sideload",
+      "take_screenshot",
+    ],
+  },
+};
 const arguments_ = process.argv.slice(2);
 const versionIndex = arguments_.indexOf("--version");
 if (versionIndex === -1 || !arguments_[versionIndex + 1] || arguments_.length !== 2) {
@@ -35,6 +39,11 @@ const version = arguments_[versionIndex + 1];
 if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
   throw new Error(`Invalid package version: ${version}`);
 }
+const publishedContract = publishedContracts[version];
+if (!publishedContract) {
+  throw new Error(`No published-package contract is defined for ${version}.`);
+}
+const expectedToolNames = publishedContract.toolNames;
 
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "roku-toolkit-published-smoke-"));
 const npmCli = [
@@ -407,6 +416,7 @@ async function listPackagedTools(launcher) {
     await terminateProcessTree();
     throw new Error("Packaged MCP launcher did not exit after stdin closed.");
   }
+  if (protocolFailure) throw await protocolFailure;
   if (exitCode !== 0) throw new Error(`Packaged MCP launcher failed:\n${stderr}`);
   const tools = toolsResponse.result?.tools;
   const toolNames = Array.isArray(tools) ? tools.map((tool) => tool?.name).sort() : [];
@@ -419,6 +429,27 @@ async function listPackagedTools(launcher) {
       `Packaged MCP server exposed an unexpected tool inventory: ${toolNames.join(", ") || "none"}. ` +
       `Response: ${JSON.stringify(toolsResponse)}`,
     );
+  }
+  const invalidDescriptors = tools.filter((tool) => (
+    tool === null ||
+    typeof tool !== "object" ||
+    Array.isArray(tool) ||
+    tool.inputSchema === null ||
+    typeof tool.inputSchema !== "object" ||
+    Array.isArray(tool.inputSchema) ||
+    tool.inputSchema.type !== "object" ||
+    (tool.inputSchema.properties !== undefined && (
+      tool.inputSchema.properties === null ||
+      typeof tool.inputSchema.properties !== "object" ||
+      Array.isArray(tool.inputSchema.properties)
+    )) ||
+    (tool.inputSchema.required !== undefined && (
+      !Array.isArray(tool.inputSchema.required) ||
+      tool.inputSchema.required.some((name) => typeof name !== "string")
+    ))
+  ));
+  if (invalidDescriptors.length > 0) {
+    throw new Error(`Packaged MCP server exposed invalid tool descriptors: ${JSON.stringify(invalidDescriptors)}`);
   }
   return tools.length;
 }
