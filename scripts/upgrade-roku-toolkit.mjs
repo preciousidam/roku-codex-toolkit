@@ -161,7 +161,10 @@ function operations() {
     inspect: inspectState,
     removePlugin: (name) => run("codex", ["plugin", "remove", `${name}@${upgradeInventory.marketplaceName}`]),
     removeMarketplace: () => run("codex", ["plugin", "marketplace", "remove", upgradeInventory.marketplaceName]),
-    addMarketplace: (ref) => run("codex", ["plugin", "marketplace", "add", source, "--ref", ref]),
+    addMarketplace: (ref, marketplaceSource = source) => run(
+      "codex",
+      ["plugin", "marketplace", "add", marketplaceSource, "--ref", ref],
+    ),
     addPlugin: (name) => run("codex", ["plugin", "add", `${name}@${upgradeInventory.marketplaceName}`]),
   };
 }

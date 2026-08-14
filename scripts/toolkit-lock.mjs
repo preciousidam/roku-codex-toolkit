@@ -17,11 +17,17 @@ export function acquireToolkitLock(operation) {
   try { fs.chmodSync(directory, 0o700); } catch {}
   const lock = path.join(directory, "operation.lock");
   let handle;
+  let created = false;
   try {
     handle = fs.openSync(lock, "wx", 0o600);
+    created = true;
     fs.writeFileSync(handle, `${operation} ${process.pid}\n`, { encoding: "utf8" });
   } catch (error) {
-    if (error?.code === "EEXIST") {
+    if (created) {
+      try { fs.closeSync(handle); } catch {}
+      try { fs.rmSync(lock, { force: true }); } catch {}
+    }
+    if (!created && error?.code === "EEXIST") {
       throw new Error(`Another toolkit setup or upgrade may be active. Inspect and remove the stale lock manually if appropriate: ${lock}`);
     }
     throw error;

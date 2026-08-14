@@ -209,3 +209,56 @@ test("rollback removes only resources found by interrupted-state inspection", as
   }));
   assert.deepEqual(removed, [["plugin", "roku-device-toolkit"]]);
 });
+
+test("rollback restores the snapshot's exact canonical source", async () => {
+  const restored = [];
+  let initial = true;
+  const classification = classifyUpgradeState({
+    ...healthy,
+    marketplaces: [{
+      ...healthy.marketplaces[0],
+      marketplaceSource: { sourceType: "git", source: "https://github.com/preciousidam/roku-codex-toolkit" },
+    }],
+    receipt: { ...healthy.receipt, source: "https://github.com/preciousidam/roku-codex-toolkit" },
+  });
+  await assert.rejects(executeUpgradeTransaction({
+    classification,
+    operations: {
+      inspect: async () => ({ marketplaces: [], plugins: [] }),
+      removePlugin: async () => {
+        if (initial) { initial = false; throw new Error("trigger rollback"); }
+      },
+      removeMarketplace: async () => {},
+      addMarketplace: async (ref, source) => { restored.push([ref, source]); },
+      addPlugin: async () => {},
+    },
+    verifyTarget: async () => {},
+    verifySnapshot: async () => {},
+  }));
+  assert.deepEqual(restored, [["v0.2.0", "https://github.com/preciousidam/roku-codex-toolkit"]]);
+});
+
+test("malformed rollback inventory falls back to best-effort cleanup", async () => {
+  const removed = [];
+  let initial = true;
+  await assert.rejects(executeUpgradeTransaction({
+    classification: classifyUpgradeState(healthy),
+    operations: {
+      inspect: async () => ({ marketplaces: {}, plugins: {} }),
+      removePlugin: async (name) => {
+        if (initial) { initial = false; throw new Error("trigger rollback"); }
+        removed.push(["plugin", name]);
+      },
+      removeMarketplace: async () => { removed.push(["marketplace"]); },
+      addMarketplace: async () => {},
+      addPlugin: async () => {},
+    },
+    verifyTarget: async () => {},
+    verifySnapshot: async () => {},
+  }));
+  assert.deepEqual(removed, [
+    ["plugin", "roku-engineering"],
+    ["plugin", "roku-device-toolkit"],
+    ["marketplace"],
+  ]);
+});

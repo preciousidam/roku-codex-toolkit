@@ -136,6 +136,7 @@ try {
       "docs/media/roku-engineering-mark.svg",
       "docs/tooling-comparison.md",
       "docs/troubleshooting.md",
+      "docs/upgrade-state-model.md",
     ].includes(name)) {
       throw new Error(`Unlisted documentation leaked into tarball: ${name}`);
     }

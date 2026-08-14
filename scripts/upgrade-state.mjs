@@ -116,21 +116,26 @@ export async function executeUpgradeTransaction({ classification, operations, ve
     };
     let interruptedState;
     await attempt("Inspecting interrupted state", async () => { interruptedState = await operations.inspect(); });
-    const installedNames = interruptedState?.plugins
-      ?.filter((entry) => (
+    const installedNames = Array.isArray(interruptedState?.plugins)
+      ? interruptedState.plugins.filter((entry) => (
         entry?.marketplaceName === marketplaceName && entry?.installed === true && pluginNames.includes(entry?.name)
       ))
-      .map((entry) => entry.name);
+        .map((entry) => entry.name)
+      : undefined;
     for (const pluginName of [...pluginNames].reverse()) {
       if (installedNames && !installedNames.includes(pluginName)) continue;
       await attempt(`Removing ${pluginName}`, () => operations.removePlugin(pluginName));
     }
-    const marketplacePresent = interruptedState?.marketplaces
-      ?.some((entry) => entry?.name === marketplaceName);
+    const marketplacePresent = Array.isArray(interruptedState?.marketplaces)
+      ? interruptedState.marketplaces.some((entry) => entry?.name === marketplaceName)
+      : undefined;
     if (marketplacePresent !== false) {
       await attempt("Removing marketplace", () => operations.removeMarketplace(marketplaceName));
     }
-    await attempt("Restoring marketplace", () => operations.addMarketplace(classification.snapshot.ref));
+    await attempt(
+      "Restoring marketplace",
+      () => operations.addMarketplace(classification.snapshot.ref, classification.snapshot.source),
+    );
     for (const pluginName of pluginNames) {
       await attempt(`Restoring ${pluginName}`, () => operations.addPlugin(pluginName));
     }

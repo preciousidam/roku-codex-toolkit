@@ -18,6 +18,7 @@
     "docs/media/roku-engineering-mark.svg",
     "docs/tooling-comparison.md",
     "docs/troubleshooting.md",
+    "docs/upgrade-state-model.md",
     "plugins/roku-device-toolkit/.codex-plugin/plugin.json",
     "plugins/roku-device-toolkit/.mcp.json",
     "plugins/roku-device-toolkit/assets/device-demo.png",
