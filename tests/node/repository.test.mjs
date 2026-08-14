@@ -100,6 +100,8 @@ test("published-package smoke matrix preserves host-only release evidence", () =
   assert.match(script, /if \(protocolFailure\) throw await protocolFailure/);
   assert.match(script, /tool\.inputSchema\.type !== "object"/);
   assert.match(script, /Packaged MCP server exposed invalid tool descriptors/);
+  assert.match(script, /schemaValidator\.compile\(tool\.inputSchema\)/);
+  assert.match(script, /Packaged MCP tool \$\{tool\.name\} exposed an invalid input schema/);
   assert.match(script, /waitForPublishedPackage/);
   assert.match(script, /assertMarketplaceManifest\(taggedCheckout/);
   assert.match(script, /Packaged MCP launcher did not exit after stdin closed/);
@@ -126,8 +128,9 @@ test("published-package smoke matrix preserves host-only release evidence", () =
   assert.doesNotMatch(report, /(?:https?:\/\/)?(?:\d{1,3}\.){3}\d{1,3}/);
   assert.ok(!metadata.files.includes("scripts/smoke-published-package.mjs"));
 
+  const orchestrator = fs.readFileSync(path.join(root, "scripts", "validate-roku-toolkit.mjs"), "utf8");
+  assert.match(orchestrator, /if \(!nodeOnly && !pythonOnly\) \{[\s\S]*smoke-published-package\.mjs[\s\S]*--check-contract/);
   const smokeScript = path.join(root, "scripts", "smoke-published-package.mjs");
-  execFileSync(process.execPath, [smokeScript, "--version", "0.2.0", "--check-contract"]);
   const unknownContract = spawnSync(
     process.execPath,
     [smokeScript, "--version", "99.0.0", "--check-contract"],

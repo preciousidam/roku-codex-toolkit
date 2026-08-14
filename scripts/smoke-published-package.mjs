@@ -7,6 +7,8 @@ import path from "node:path";
 import process from "node:process";
 import readline from "node:readline";
 
+import Ajv2020 from "ajv/dist/2020.js";
+
 import { findPython } from "./runtime-support.mjs";
 
 const packageName = "roku-codex-toolkit";
@@ -468,6 +470,14 @@ async function listPackagedTools(launcher) {
   ));
   if (invalidDescriptors.length > 0) {
     throw new Error(`Packaged MCP server exposed invalid tool descriptors: ${JSON.stringify(invalidDescriptors)}`);
+  }
+  const schemaValidator = new Ajv2020({ allErrors: true, strict: true });
+  for (const tool of tools) {
+    try {
+      schemaValidator.compile(tool.inputSchema);
+    } catch (error) {
+      throw new Error(`Packaged MCP tool ${tool.name} exposed an invalid input schema: ${error.message}`);
+    }
   }
   return tools.length;
 }

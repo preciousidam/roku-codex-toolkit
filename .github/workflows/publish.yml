@@ -68,4 +68,5 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
+      - run: npm ci --ignore-scripts
       - run: node scripts/smoke-published-package.mjs --version "${{ needs.publish.outputs.version }}"

@@ -29,4 +29,7 @@ if (!pythonOnly) run("node", ["--test", "tests/node/repository.test.mjs"], "Node
 if (!nodeOnly) {
   run(python.command, [...python.args, "-m", "unittest", "discover", "-s", "tests/python", "-p", "test_*.py"], "Python tests");
 }
+if (!nodeOnly && !pythonOnly) {
+  run("node", ["scripts/smoke-published-package.mjs", "--version", "0.2.0", "--check-contract"], "Published contract");
+}
 console.log("Roku Codex Toolkit validation passed.");
