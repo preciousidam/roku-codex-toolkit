@@ -31,40 +31,32 @@ server = load("roku_server_test", "plugins/roku-device-toolkit/mcp/server.py")
 
 
 class ConfigurationTests(unittest.TestCase):
-    def test_keychain_storage_uses_terminal_prompt_without_secret_transport(self):
-        completed = mock.Mock(returncode=0)
+    def test_keychain_storage_uses_native_api_without_subprocess(self):
         with mock.patch.object(config.sys, "platform", "darwin"), \
-             mock.patch.object(config.subprocess, "run", return_value=completed) as run:
-            config.store_keychain_password()
-        command = run.call_args.args[0]
-        self.assertEqual(command[-1], "-w")
-        self.assertNotIn("developer-secret", command)
-        self.assertEqual(run.call_args.kwargs, {
-            "check": False,
-            "timeout": config.KEYCHAIN_PROMPT_TIMEOUT_SECONDS,
-        })
-        self.assertEqual(completed.returncode, 0)
+             mock.patch.object(config, "_store_keychain_password_native", return_value=0) as store, \
+             mock.patch.object(config.subprocess, "run") as run:
+            config.store_keychain_password("developer-secret")
+        store.assert_called_once_with("developer-secret")
+        run.assert_not_called()
 
-    def test_keychain_timeout_is_actionable_and_secret_free(self):
-        error = config.subprocess.TimeoutExpired(["security"], config.KEYCHAIN_PROMPT_TIMEOUT_SECONDS)
+    def test_keychain_rejects_empty_password_before_native_update(self):
         with mock.patch.object(config.sys, "platform", "darwin"), \
-             mock.patch.object(config.subprocess, "run", side_effect=error), \
-             self.assertRaisesRegex(RuntimeError, "timeout.*target remains saved") as raised:
-            config.store_keychain_password()
-        self.assertNotIn("developer-secret", str(raised.exception))
+             mock.patch.object(config, "_store_keychain_password_native") as store, \
+             self.assertRaisesRegex(ValueError, "cannot be empty.*unchanged"):
+            config.store_keychain_password("")
+        store.assert_not_called()
 
     def test_keychain_cancellation_is_actionable(self):
         with mock.patch.object(config.sys, "platform", "darwin"), \
-             mock.patch.object(config.subprocess, "run", side_effect=KeyboardInterrupt), \
+             mock.patch.object(config, "_store_keychain_password_native", side_effect=KeyboardInterrupt), \
              self.assertRaisesRegex(RuntimeError, "cancelled.*target remains saved"):
-            config.store_keychain_password()
+            config.store_keychain_password("developer-secret")
 
-    def test_keychain_nonzero_exit_does_not_forward_sensitive_output(self):
-        completed = mock.Mock(returncode=1, stdout="developer-secret", stderr="developer-secret")
+    def test_keychain_nonzero_status_does_not_expose_secret(self):
         with mock.patch.object(config.sys, "platform", "darwin"), \
-             mock.patch.object(config.subprocess, "run", return_value=completed), \
+             mock.patch.object(config, "_store_keychain_password_native", return_value=-1), \
              self.assertRaisesRegex(RuntimeError, "did not store.*target remains saved") as raised:
-            config.store_keychain_password()
+            config.store_keychain_password("developer-secret")
         self.assertNotIn("developer-secret", str(raised.exception))
 
     def test_target_rejects_urls_and_ports(self):
