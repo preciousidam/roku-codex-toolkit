@@ -72,6 +72,7 @@ test("published-package smoke matrix preserves host-only release evidence", () =
   assert.match(script, /assertIdenticalTree\(installedRoot, taggedCheckout, "plugins"\)/);
   assert.match(script, /taggedMcpTools: taggedToolCount/);
   assert.match(script, /Packaged MCP launcher emitted malformed JSON/);
+  assert.match(script, /message === null \|\| typeof message !== "object" \|\| Array\.isArray\(message\)/);
   assert.match(script, /Packaged MCP launcher did not exit after stdin closed/);
   assert.match(script, /method: "notifications\/initialized"/);
   assert.match(script, /protocolVersion: "2025-06-18"/);

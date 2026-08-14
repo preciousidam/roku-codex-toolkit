@@ -231,6 +231,10 @@ async function listPackagedTools(launcher) {
       failProtocol(new Error(`Packaged MCP launcher emitted malformed JSON: ${JSON.stringify(line)} (${error.message})`));
       return;
     }
+    if (message === null || typeof message !== "object" || Array.isArray(message)) {
+      failProtocol(new Error(`Packaged MCP launcher emitted a non-object JSON-RPC message: ${JSON.stringify(message)}`));
+      return;
+    }
     const waiter = waiters.get(message.id);
     if (waiter) {
       waiters.delete(message.id);
