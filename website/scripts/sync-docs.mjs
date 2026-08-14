@@ -22,6 +22,7 @@ const canonicalPages = [
   ["docs/license-evaluation.md", "license-evaluation.md"],
   ["docs/v0.1.0.md", "v0-1-0.md"],
   ["docs/v0.2.0.md", "v0-2-0.md"],
+  ["docs/v0.3.0.md", "v0-3-0.md"],
   ["SECURITY.md", "security.md"],
   ["CONTRIBUTING.md", "contributing.md"],
 ];

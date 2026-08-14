@@ -34,15 +34,20 @@ The two-plugin split is also coherent: device access has materially different pe
 
 Paths are derived from script locations and plugin-relative MCP configuration. Interpreter discovery covers `python3`, `python`, and Windows `py -3`. Runtime code uses Python 3.9-compatible syntax. POSIX modes are asserted only on POSIX; Windows ACL equivalence is not claimed.
 
-The repository is a Codex marketplace source, not an npm or PyPI package. Keeping the root npm package private prevents accidental registry publication. Public distribution should initially use tagged GitHub source releases after the release checklist passes.
+The repository is both a Codex marketplace source and, since v0.2.0, a public npm delivery package;
+it is not a PyPI package. npm installation is side-effect free, while explicit setup registers the
+matching versioned Git tag as the durable marketplace source. Publication remains restricted to the
+protected release workflow after the release checklist passes.
 
 ## Follow-up backlog
 
 - Completed: loopback HTTP/digest and socket integration tests cover device boundaries; Windows CI covers process-tree cancellation.
 - Completed: Draft 2020-12 JSON Schemas document flow scenarios and generated reports and are checked by repository validation.
 - P3: add structured server logging with automatic redaction.
-- P3: evaluate signed release artifacts and checksums once distribution begins.
-- P3: build a static documentation portal and marketplace media only after v0.1.0 behavior freezes.
+- P3: evaluate signed release artifacts and checksums if npm provenance and Git-tag comparison prove
+  insufficient for a concrete adopter or policy requirement.
+- Completed: the static documentation portal and sanitized marketplace media are published through
+  the isolated GitHub Pages workflow.
 
 ## License decision
 
