@@ -3,8 +3,10 @@ import test from "node:test";
 
 import {
   checkoutIsClean,
+  classifyReceiptEntry,
   classifyUpgradeState,
   executeUpgradeTransaction,
+  inferReceiptFromCheckout,
   mutationPlan,
 } from "../../scripts/upgrade-state.mjs";
 
@@ -92,6 +94,35 @@ test("checkout cleanliness permits only the receipt and Python bytecode caches",
     assert.equal(checkoutIsClean("?? .codex-marketplace-install.json\0", ignored), false);
   }
   assert.equal(checkoutIsClean(" M README.md\0", ""), false);
+});
+
+test("only a regular receipt entry is readable", () => {
+  assert.equal(classifyReceiptEntry(undefined), "missing");
+  assert.equal(classifyReceiptEntry({ isFile: () => true, isSymbolicLink: () => false }), "file");
+  assert.equal(classifyReceiptEntry({ isFile: () => false, isSymbolicLink: () => true }), "unsafe");
+  assert.equal(classifyReceiptEntry({ isFile: () => false, isSymbolicLink: () => false }), "unsafe");
+});
+
+test("a missing receipt is inferred only from one exact canonical version", () => {
+  const input = {
+    marketplaceSource: healthy.marketplaces[0].marketplaceSource,
+    origin: healthy.marketplaces[0].marketplaceSource.source,
+    tags: ["v0.2.0"],
+    head: revision,
+    plugins: healthy.plugins,
+  };
+  assert.deepEqual(inferReceiptFromCheckout(input), { ...healthy.receipt, inferred: true });
+  for (const override of [
+    { origin: "https://example.com/untrusted.git" },
+    { tags: [] },
+    { tags: ["v0.2.0", "v0.1.0"] },
+    { tags: ["main"] },
+    { head: "not-a-revision" },
+    { plugins: healthy.plugins.slice(0, 1) },
+    { plugins: healthy.plugins.map((plugin) => ({ ...plugin, version: "0.1.0" })) },
+  ]) {
+    assert.equal(inferReceiptFromCheckout({ ...input, ...override }), undefined);
+  }
 });
 
 function transactionFixture(failAt) {

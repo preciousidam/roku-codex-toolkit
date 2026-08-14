@@ -10,8 +10,10 @@ import { buildWindowsShimInvocation, requirePython, requireSupportedNode } from 
 import { acquireToolkitLock } from "./toolkit-lock.mjs";
 import {
   checkoutIsClean,
+  classifyReceiptEntry,
   classifyUpgradeState,
   executeUpgradeTransaction,
+  inferReceiptFromCheckout,
   upgradeInventory,
 } from "./upgrade-state.mjs";
 
@@ -144,29 +146,67 @@ async function inspectState() {
   let receipt;
   try {
     if (fs.realpathSync(path.dirname(receiptPath)) !== root) throw new Error("unsafe root");
-    receipt = JSON.parse(fs.readFileSync(receiptPath, "utf8"));
   } catch {
     return { marketplaces, plugins, receipt: undefined, checkout: undefined };
   }
+  let receiptEntry;
   try {
-    const [status, ignored, head, refRevision] = await Promise.all([
+    receiptEntry = fs.lstatSync(receiptPath);
+  } catch (error) {
+    if (error?.code !== "ENOENT") return { marketplaces, plugins, receipt: undefined, checkout: undefined };
+  }
+  const receiptEntryType = classifyReceiptEntry(receiptEntry);
+  if (receiptEntryType === "unsafe") {
+    return { marketplaces, plugins, receipt: undefined, checkout: undefined };
+  }
+  if (receiptEntryType === "file") {
+    try {
+      receipt = JSON.parse(fs.readFileSync(receiptPath, "utf8"));
+    } catch {
+      return { marketplaces, plugins, receipt: undefined, checkout: undefined };
+    }
+  }
+  try {
+    const common = await Promise.all([
       run("git", ["status", "--porcelain=v1", "-z", "--untracked-files=all"], { cwd: root, capture: true }),
       run("git", ["ls-files", "-z", "--others", "--ignored", "--exclude-standard"], { cwd: root, capture: true }),
       run("git", ["rev-parse", "HEAD"], { cwd: root, capture: true }),
-      run("git", ["rev-list", "-n", "1", receipt.ref_name], { cwd: root, capture: true }),
     ]);
+    const [status, ignored, headResult] = common;
+    const head = headResult.stdout.trim();
+    if (receiptEntryType === "missing") {
+      const [origin, tags] = await Promise.all([
+        run("git", ["config", "--get", "remote.origin.url"], { cwd: root, capture: true }),
+        run("git", ["tag", "--points-at", "HEAD", "--list", "v*"], { cwd: root, capture: true }),
+      ]);
+      receipt = inferReceiptFromCheckout({
+        marketplaceSource: marketplace.marketplaceSource,
+        origin: origin.stdout.trim(),
+        tags: tags.stdout.split(/\r?\n/).filter(Boolean),
+        head,
+        plugins,
+      });
+      if (!receipt) return { marketplaces, plugins, receipt: undefined, checkout: undefined };
+      return {
+        marketplaces,
+        plugins,
+        receipt,
+        checkout: { clean: checkoutIsClean(status.stdout, ignored.stdout), head, refRevision: head },
+      };
+    }
+    const refRevision = await run("git", ["rev-list", "-n", "1", receipt.ref_name], { cwd: root, capture: true });
     return {
       marketplaces,
       plugins,
       receipt,
       checkout: {
         clean: checkoutIsClean(status.stdout, ignored.stdout),
-        head: head.stdout.trim(),
+        head,
         refRevision: refRevision.stdout.trim(),
       },
     };
   } catch {
-    return { marketplaces, plugins, receipt, checkout: undefined };
+    return { marketplaces, plugins, receipt: undefined, checkout: undefined };
   }
 }
 

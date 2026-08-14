@@ -536,6 +536,9 @@ test("npm metadata exposes a side-effect-free public CLI package", () => {
   assert.match(cli, /child\.kill\(signal\)/);
   assert.match(upgrade, /process\.on\("message"/);
   assert.match(upgrade, /process\.disconnect\(\)/);
+  assert.match(upgrade, /lstatSync\(receiptPath\)/);
+  assert.match(upgrade, /\["config", "--get", "remote\.origin\.url"\]/);
+  assert.doesNotMatch(upgrade, /\["remote", "get-url", "origin"\]/);
   assert.ok(!metadata.files.includes("bin/"));
   assert.ok(metadata.files.includes("bin/roku-codex-toolkit.mjs"));
   assert.ok(!metadata.files.includes("plugins/"));
