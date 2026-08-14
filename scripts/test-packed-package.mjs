@@ -10,7 +10,12 @@ import { stagePackageSource } from "./package-staging.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "roku-toolkit-package-"));
-const packageTestEnv = { ...process.env, npm_config_cache: path.join(temporary, "npm-cache") };
+const packageTestEnv = {
+  ...process.env,
+  npm_config_cache: path.join(temporary, "npm-cache"),
+  XDG_CONFIG_HOME: path.join(temporary, "config"),
+  LOCALAPPDATA: path.join(temporary, "local-app-data"),
+};
 const npmCommand = process.platform === "win32" ? process.execPath : "npm";
 const npmPrefix = process.platform === "win32"
   ? [process.env.npm_execpath ?? ""]
@@ -246,7 +251,7 @@ try {
     env: { ...packageTestEnv, PATH: fakeBin, FAKE_CODEX_LOG: commandLog },
   });
   if (!`${missingPython.stdout}\n${missingPython.stderr}`.includes("Python 3.9 or newer is required")) {
-    throw new Error("Missing Python did not produce the expected setup diagnostic.");
+    throw new Error(`Missing Python did not produce the expected setup diagnostic:\n${missingPython.stdout}\n${missingPython.stderr}`);
   }
   if (fs.existsSync(commandLog)) {
     throw new Error("Setup changed Codex state before completing its Python preflight.");

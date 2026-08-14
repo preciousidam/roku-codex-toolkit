@@ -2,12 +2,12 @@
 
 import { spawn } from "node:child_process";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
-import { buildWindowsShimInvocation, requireSupportedNode } from "./runtime-support.mjs";
+import { buildWindowsShimInvocation, requirePython, requireSupportedNode } from "./runtime-support.mjs";
+import { acquireToolkitLock } from "./toolkit-lock.mjs";
 import { classifyUpgradeState, executeUpgradeTransaction, upgradeInventory } from "./upgrade-state.mjs";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -50,18 +50,17 @@ async function terminateTree(child) {
     });
   } else {
     try { process.kill(-child.pid, "SIGTERM"); } catch {}
-    await new Promise((resolve) => {
-      if (child.exitCode !== null || child.signalCode !== null) return resolve();
-      const force = setTimeout(() => {
+    const started = Date.now();
+    while (Date.now() - started < 3_000) {
+      try { process.kill(-child.pid, 0); } catch (error) {
+        if (error?.code === "ESRCH") return;
+      }
+      if (Date.now() - started >= 2_000) {
         try { process.kill(-child.pid, "SIGKILL"); } catch {}
-      }, 2_000);
-      const giveUp = setTimeout(resolve, 3_000);
-      child.once("exit", () => {
-        clearTimeout(force);
-        clearTimeout(giveUp);
-        resolve();
-      });
-    });
+      }
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    try { process.kill(-child.pid, "SIGKILL"); } catch {}
   }
 }
 
@@ -79,6 +78,7 @@ async function run(command, commandArgs, { cwd = packageRoot, capture = false, t
     let stdout = "";
     let stderr = "";
     let terminationError;
+    let stopping = false;
     child.stdout?.setEncoding("utf8").on("data", (chunk) => { stdout += chunk; });
     child.stderr?.setEncoding("utf8").on("data", (chunk) => { stderr += chunk; });
     let settled = false;
@@ -92,6 +92,8 @@ async function run(command, commandArgs, { cwd = packageRoot, capture = false, t
       else resolve({ stdout, stderr });
     };
     const stop = async (error) => {
+      if (stopping) return;
+      stopping = true;
       terminationError = error;
       await terminateTree(child);
       finish(error);
@@ -100,7 +102,9 @@ async function run(command, commandArgs, { cwd = packageRoot, capture = false, t
     if (!rollbackMode) controller.signal.addEventListener("abort", onAbort, { once: true });
     const timer = setTimeout(() => { void stop(new Error(`${command} timed out after ${timeout}ms.`)); }, timeout);
     child.once("error", (error) => finish(new Error(`${command} is required but unavailable: ${error.message}`)));
-    child.once("exit", (status) => finish(terminationError, status));
+    child.once("exit", (status) => {
+      if (!stopping) finish(terminationError, status);
+    });
   });
 }
 
@@ -151,34 +155,6 @@ async function inspectState() {
   }
 }
 
-function lockDirectory() {
-  const base = process.platform === "win32"
-    ? (process.env.LOCALAPPDATA || process.env.APPDATA)
-    : (process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config"));
-  if (!base || !path.isAbsolute(base)) throw new Error("Unable to determine a safe toolkit configuration directory.");
-  return path.join(base, "roku-codex-toolkit");
-}
-
-function acquireLock() {
-  const directory = lockDirectory();
-  fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
-  try { fs.chmodSync(directory, 0o700); } catch {}
-  const lock = path.join(directory, "upgrade.lock");
-  let handle;
-  try {
-    handle = fs.openSync(lock, "wx", 0o600);
-    fs.writeFileSync(handle, `${process.pid}\n`, { encoding: "utf8" });
-  } catch (error) {
-    if (error?.code === "EEXIST") {
-      throw new Error(`Another upgrade may be active. Inspect and remove the stale lock manually if appropriate: ${lock}`);
-    }
-    throw error;
-  }
-  return () => {
-    try { fs.closeSync(handle); } finally { fs.rmSync(lock, { force: true }); }
-  };
-}
-
 function operations() {
   return {
     beginRollback: () => { rollbackMode = true; },
@@ -195,8 +171,31 @@ async function requireClassification(targetVersion) {
   return { state, classification: classifyUpgradeState({ ...state, targetVersion }) };
 }
 
+async function remoteTagRevision(ref) {
+  const remote = await run(
+    "git",
+    [
+      "ls-remote", "--exit-code", "--tags", `https://github.com/${source}.git`,
+      `refs/tags/${ref}`, `refs/tags/${ref}^{}`,
+    ],
+    { capture: true },
+  );
+  const entries = remote.stdout.trim().split(/\r?\n/).filter(Boolean).map((line) => {
+    const [revision, name] = line.split(/\s+/, 2);
+    return { revision, name };
+  });
+  const peeled = entries.find((entry) => entry.name === `refs/tags/${ref}^{}`);
+  const direct = entries.find((entry) => entry.name === `refs/tags/${ref}`);
+  const revision = (peeled ?? direct)?.revision;
+  if (!/^[0-9a-f]{40}$/.test(revision ?? "")) {
+    throw new Error(`Release tag ${ref} did not resolve to an immutable revision.`);
+  }
+  return revision;
+}
+
 requireSupportedNode();
-const releaseLock = acquireLock();
+requirePython();
+const releaseLock = acquireToolkitLock("upgrade");
 try {
   const initial = await requireClassification(packageVersion);
   if (initial.classification.disposition === "refuse") throw new Error(initial.classification.reason);
@@ -204,13 +203,11 @@ try {
     console.log(`Roku Codex Toolkit ${packageVersion} is already installed.`);
     process.exitCode = 0;
   } else {
-    const remote = await run(
-      "git",
-      ["ls-remote", "--exit-code", "--tags", `https://github.com/${source}.git`, `refs/tags/${initial.classification.targetRef}`],
-      { capture: true },
-    );
-    const targetRevision = remote.stdout.trim().split(/\s+/, 1)[0];
-    if (!/^[0-9a-f]{40}$/.test(targetRevision)) throw new Error("The target release tag did not resolve to an immutable revision.");
+    const snapshotRevision = await remoteTagRevision(initial.classification.snapshot.ref);
+    if (snapshotRevision !== initial.classification.snapshot.revision) {
+      throw new Error("The installed release tag no longer resolves to its recorded revision; upgrade left it unchanged.");
+    }
+    const targetRevision = await remoteTagRevision(initial.classification.targetRef);
     await executeUpgradeTransaction({
       classification: initial.classification,
       operations: operations(),

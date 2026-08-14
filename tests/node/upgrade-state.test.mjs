@@ -174,3 +174,38 @@ test("cancellation switches operations into rollback mode before recovery", asyn
   );
   assert.deepEqual(calls, ["beginRollback"]);
 });
+
+test("rollback removes only resources found by interrupted-state inspection", async () => {
+  const removed = [];
+  const operations = {
+    inspect: async () => ({
+      marketplaces: [],
+      plugins: [{
+        name: "roku-device-toolkit",
+        marketplaceName: "roku-codex-toolkit",
+        installed: true,
+      }],
+    }),
+    removePlugin: async (name) => { removed.push(["plugin", name]); },
+    removeMarketplace: async () => { removed.push(["marketplace"]); },
+    addMarketplace: async () => {},
+    addPlugin: async () => {},
+  };
+  let initial = true;
+  await assert.rejects(executeUpgradeTransaction({
+    classification: classifyUpgradeState(healthy),
+    operations: {
+      ...operations,
+      removePlugin: async (name) => {
+        if (initial) {
+          initial = false;
+          throw new Error("trigger rollback");
+        }
+        removed.push(["plugin", name]);
+      },
+    },
+    verifyTarget: async () => {},
+    verifySnapshot: async () => {},
+  }));
+  assert.deepEqual(removed, [["plugin", "roku-device-toolkit"]]);
+});

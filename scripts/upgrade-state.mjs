@@ -114,11 +114,22 @@ export async function executeUpgradeTransaction({ classification, operations, ve
         rollbackErrors.push(`${description}: ${rollbackError instanceof Error ? rollbackError.message : String(rollbackError)}`);
       }
     };
-    await attempt("Inspecting interrupted state", operations.inspect);
+    let interruptedState;
+    await attempt("Inspecting interrupted state", async () => { interruptedState = await operations.inspect(); });
+    const installedNames = interruptedState?.plugins
+      ?.filter((entry) => (
+        entry?.marketplaceName === marketplaceName && entry?.installed === true && pluginNames.includes(entry?.name)
+      ))
+      .map((entry) => entry.name);
     for (const pluginName of [...pluginNames].reverse()) {
+      if (installedNames && !installedNames.includes(pluginName)) continue;
       await attempt(`Removing ${pluginName}`, () => operations.removePlugin(pluginName));
     }
-    await attempt("Removing marketplace", () => operations.removeMarketplace(marketplaceName));
+    const marketplacePresent = interruptedState?.marketplaces
+      ?.some((entry) => entry?.name === marketplaceName);
+    if (marketplacePresent !== false) {
+      await attempt("Removing marketplace", () => operations.removeMarketplace(marketplaceName));
+    }
     await attempt("Restoring marketplace", () => operations.addMarketplace(classification.snapshot.ref));
     for (const pluginName of pluginNames) {
       await attempt(`Restoring ${pluginName}`, () => operations.addPlugin(pluginName));

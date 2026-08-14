@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import process from "node:process";
 import { commandStatus, requirePython, requireSupportedNode } from "./runtime-support.mjs";
+import { acquireToolkitLock } from "./toolkit-lock.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const marketplaceName = "roku-codex-toolkit";
@@ -23,6 +24,9 @@ if (unknownArgs.length > 0) {
   throw new Error(`Unknown setup option${unknownArgs.length === 1 ? "" : "s"}: ${unknownArgs.join(", ")}`);
 }
 const skipConfig = setupArgs.includes("--skip-config");
+
+// Serialize setup with upgrades before either command inspects Codex state.
+acquireToolkitLock("setup");
 
 function run(command, args, options = {}) {
   const result = commandStatus(command, args, {
