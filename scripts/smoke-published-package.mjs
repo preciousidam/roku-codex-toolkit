@@ -346,6 +346,7 @@ try {
   }
   if (metadata.version !== version) throw new Error(`Installed ${metadata.version}; expected ${version}.`);
   run("git", [
+    "-c", "core.autocrlf=false",
     "clone",
     "--depth", "1",
     "--single-branch",

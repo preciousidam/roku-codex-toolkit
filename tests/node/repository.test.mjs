@@ -68,7 +68,7 @@ test("published-package smoke matrix preserves host-only release evidence", () =
   assert.match(script, /process\.kill\(-child\.pid, "SIGTERM"\)/);
   assert.match(script, /await terminateProcessTree\(\);\s*throw new Error\(`Packaged MCP initialize failed/);
   assert.match(script, /npm_config_ignore_scripts: "true"/);
-  assert.match(script, /"clone",[\s\S]*"--branch", `v\$\{version\}`/);
+  assert.match(script, /"-c", "core\.autocrlf=false",\s*"clone",[\s\S]*"--branch", `v\$\{version\}`/);
   assert.match(script, /assertIdenticalTree\(installedRoot, taggedCheckout, "plugins"\)/);
   assert.match(script, /taggedMcpTools: taggedToolCount/);
   assert.match(script, /marketplace\.ref !== `v\$\{version\}`/);
