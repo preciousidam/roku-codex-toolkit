@@ -207,6 +207,11 @@ try {
     FAKE_INSTALLED: "",
   };
   run(process.execPath, [cli, "doctor", "--no-codex"], { cwd: temporary, env: fakeEnvironment });
+  // Windows hosted runners may expose an unrelated codex.exe ahead of a test
+  // .cmd shim. Unix jobs still exercise the default doctor path hermetically.
+  if (process.platform !== "win32") {
+    run(process.execPath, [cli, "doctor"], { cwd: temporary, env: fakeEnvironment });
+  }
   fs.rmSync(commandLog, { force: true });
   const doctorHelp = run(process.execPath, [cli, "doctor", "-h"], {
     cwd: temporary,

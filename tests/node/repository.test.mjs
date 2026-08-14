@@ -76,6 +76,8 @@ test("published-package smoke matrix preserves host-only release evidence", () =
   assert.match(script, /method: "notifications\/initialized"/);
   assert.match(script, /protocolVersion: "2025-06-18"/);
   assert.match(script, /ROKU_SMOKE_ALLOW_REMOVALS !== "1"/);
+  assert.match(script, /child\.stdin\.on\("error"/);
+  assert.match(script, /roku-device-toolkit@roku-codex-toolkit/);
   assert.match(script, /marketplace\.ref !== `v\$\{version\}`/);
   assert.match(script, /lifecycleScriptsAbsent: "pass"/);
   assert.match(report, /manual Codex confirmation/i);
@@ -84,14 +86,12 @@ test("published-package smoke matrix preserves host-only release evidence", () =
   assert.ok(!metadata.files.includes("scripts/smoke-published-package.mjs"));
 });
 
-test("packed-package doctor checks do not depend on ambient Codex installations", () => {
+test("packed-package doctor coverage avoids ambient Windows Codex installations", () => {
   const script = fs.readFileSync(path.join(root, "scripts", "test-packed-package.mjs"), "utf8");
   const doctorInvocations = [...script.matchAll(/\[cli, "doctor"([^\]]*)\]/g)];
-  assert.ok(doctorInvocations.length >= 2);
-  for (const invocation of doctorInvocations) {
-    if (/"-h"/.test(invocation[1])) continue;
-    assert.match(invocation[1], /"--no-codex"/);
-  }
+  assert.ok(doctorInvocations.some((invocation) => /"--no-codex"/.test(invocation[1])));
+  assert.ok(doctorInvocations.some((invocation) => invocation[1] === ""));
+  assert.match(script, /if \(process\.platform !== "win32"\)/);
 });
 
 test("marketplace entries resolve portably to valid plugin manifests", () => {

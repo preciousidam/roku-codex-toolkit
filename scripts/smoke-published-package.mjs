@@ -178,6 +178,9 @@ async function listPackagedTools(launcher) {
     });
     child.once("close", resolve);
   });
+  child.stdin.on("error", (error) => {
+    failProtocol(new Error(`Packaged MCP launcher stdin failed: ${error.message}`));
+  });
 
   function waitUntilClosed(timeoutMs) {
     return new Promise((resolve) => {
@@ -346,6 +349,7 @@ if (args[0] === "--version" || args.join(" ") === "plugin marketplace --help") {
   state.marketplace = null;
   write(state);
 } else if (args[0] === "plugin" && args[1] === "add") {
+  if (!["roku-device-toolkit@roku-codex-toolkit", "roku-engineering@roku-codex-toolkit"].includes(args[2])) process.exit(2);
   const state = read();
   const name = args[2].split("@")[0];
   if (!state.plugins.includes(name)) state.plugins.push(name);
