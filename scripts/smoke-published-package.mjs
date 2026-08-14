@@ -50,6 +50,7 @@ const eventFile = path.join(temporary, "codex-events.jsonl");
 const isolatedHome = path.join(temporary, "home");
 const isolatedConfig = path.join(temporary, "config");
 const installPrefix = path.join(temporary, "install");
+const taggedCheckout = path.join(temporary, "tagged-checkout");
 const delimiter = process.platform === "win32" ? ";" : ":";
 
 function run(command, args, options = {}) {
@@ -102,6 +103,35 @@ function assertFreshInstallState() {
   const plugins = [...state.plugins].sort();
   if (plugins.join(",") !== "roku-device-toolkit,roku-engineering") {
     throw new Error(`Setup installed an unexpected plugin set: ${plugins.join(", ") || "none"}.`);
+  }
+}
+
+function relativeFiles(root) {
+  const files = [];
+  function visit(directory) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const absolute = path.join(directory, entry.name);
+      if (entry.isDirectory()) visit(absolute);
+      else if (entry.isFile()) files.push(path.relative(root, absolute));
+      else throw new Error(`Unexpected non-file entry in release content: ${absolute}`);
+    }
+  }
+  visit(root);
+  return files.sort();
+}
+
+function assertIdenticalTree(publishedRoot, tagRoot, relative) {
+  const published = path.join(publishedRoot, relative);
+  const tagged = path.join(tagRoot, relative);
+  const publishedFiles = relativeFiles(published);
+  const taggedFiles = relativeFiles(tagged);
+  if (publishedFiles.join("\n") !== taggedFiles.join("\n")) {
+    throw new Error(`Published npm and v${version} ${relative} file inventories differ.`);
+  }
+  for (const file of publishedFiles) {
+    if (!fs.readFileSync(path.join(published, file)).equals(fs.readFileSync(path.join(tagged, file)))) {
+      throw new Error(`Published npm and v${version} differ at ${path.join(relative, file)}.`);
+    }
   }
 }
 
@@ -202,6 +232,7 @@ async function listPackagedTools(launcher) {
   child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} })}\n`);
   const initializeResponse = await initialize;
   if (!initializeResponse.result) {
+    await terminateProcessTree();
     throw new Error(`Packaged MCP initialize failed: ${JSON.stringify(initializeResponse.error)}`);
   }
   const toolsList = responseFor(2);
@@ -283,6 +314,7 @@ const smokeEnvironment = {
   npm_config_audit: "false",
   npm_config_fund: "false",
   npm_config_update_notifier: "false",
+  npm_config_ignore_scripts: "true",
   ROKU_SMOKE_STATE: stateFile,
   ROKU_SMOKE_EVENTS: eventFile,
 };
@@ -313,8 +345,29 @@ try {
     if (metadata.scripts?.[lifecycle]) throw new Error(`Published package defines an unexpected ${lifecycle} script.`);
   }
   if (metadata.version !== version) throw new Error(`Installed ${metadata.version}; expected ${version}.`);
+  run("git", [
+    "clone",
+    "--depth", "1",
+    "--single-branch",
+    "--branch", `v${version}`,
+    "https://github.com/preciousidam/roku-codex-toolkit.git",
+    taggedCheckout,
+  ]);
+  assertIdenticalTree(installedRoot, taggedCheckout, "plugins");
+  const publishedMarketplace = fs.readFileSync(path.join(installedRoot, ".agents", "plugins", "marketplace.json"));
+  const taggedMarketplace = fs.readFileSync(path.join(taggedCheckout, ".agents", "plugins", "marketplace.json"));
+  if (!publishedMarketplace.equals(taggedMarketplace)) {
+    throw new Error(`Published npm and v${version} marketplace manifests differ.`);
+  }
   const toolCount = await listPackagedTools(path.join(
     installedRoot,
+    "plugins",
+    "roku-device-toolkit",
+    "scripts",
+    "launch-mcp.mjs",
+  ));
+  const taggedToolCount = await listPackagedTools(path.join(
+    taggedCheckout,
     "plugins",
     "roku-device-toolkit",
     "scripts",
@@ -352,6 +405,7 @@ try {
       versionPinnedMarketplace: "pass",
       twoPluginsInstalled: "pass",
       packagedMcpTools: toolCount,
+      taggedMcpTools: taggedToolCount,
       lifecycleScriptsAbsent: "pass",
       credentialPromptAbsent: "pass",
       uninstallAndReinstall: "pass",
