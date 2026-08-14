@@ -27,13 +27,15 @@ release tag. Temporary npm, home, and configuration directories are deleted afte
 
 | Host | Node | Python | Git | Published package | Automated result | Physical Roku evidence |
 | --- | --- | --- | --- | --- | --- | --- |
-| macOS GitHub-hosted runner | 22 | 3.13 | Runner-provided | `0.2.0` | Pending first PR matrix | Not in scope |
-| Ubuntu GitHub-hosted runner | 22 | 3.13 | Runner-provided | `0.2.0` | Pending first PR matrix | Not in scope |
-| Windows GitHub-hosted runner | 22 | 3.13 | Runner-provided | `0.2.0` | Pending first PR matrix | Not in scope |
+| macOS 26.5.2 GitHub-hosted runner (Darwin 25.5.0, arm64) | 22.23.1 | 3.13.14 | 2.55.0 | `0.2.0` | [Pass](https://github.com/preciousidam/roku-codex-toolkit/actions/runs/31785650322) | Not in scope |
+| Ubuntu GitHub-hosted runner (Linux 6.17.0-1020-azure, x64) | 22.23.1 | 3.13.14 | 2.54.0 | `0.2.0` | [Pass](https://github.com/preciousidam/roku-codex-toolkit/actions/runs/31785650322) | Not in scope |
+| Windows 10.0.26100 GitHub-hosted runner (x64) | 22.23.2 | 3.14.6 | 2.55.0.windows.3 | `0.2.0` | [Pass](https://github.com/preciousidam/roku-codex-toolkit/actions/runs/31785650322) | Not in scope |
 
-Replace the pending cells with the linked GitHub Actions run after the first complete matrix. Record
-reproducible failures as separate `bug` issues suitable for v0.2.1. Do not add runner paths, account
-details, credentials, device addresses, screenshots, console logs, or private artifacts.
+The first complete matrix passed on August 14, 2026. The Windows smoke selected the newest supported
+`py -3` interpreter available on that runner, independently confirming the toolkit's portable Python
+discovery behavior. Record future reproducible failures as separate `bug` issues suitable for a patch
+release. Do not add runner paths, account details, credentials, device addresses, screenshots,
+console logs, or private artifacts.
 
 ## Manual Codex confirmation
 
