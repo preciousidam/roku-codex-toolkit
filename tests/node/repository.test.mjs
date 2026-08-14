@@ -76,6 +76,7 @@ test("published-package smoke matrix preserves host-only release evidence", () =
   assert.match(script, /publishedContracts/);
   assert.match(script, /"0\.2\.0": \{[\s\S]*toolNames:/);
   assert.match(script, /"0\.3\.0": \{[\s\S]*toolNames:/);
+  assert.match(script, /"0\.3\.1": \{[\s\S]*toolNames:/);
   assert.match(script, /No published-package contract is defined/);
   assert.match(script, /Published-package contract \$\{version\} matches \$\{toolCount\} checkout tools/);
   assert.match(script, /new Set\(toolNames\)\.size !== expectedToolNames\.length/);

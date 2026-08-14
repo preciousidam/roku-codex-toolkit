@@ -114,5 +114,5 @@ returning nonzero or timing out.
 - Device configuration and credential stores are byte-for-byte or status-equivalent before and
   after success, refusal, failure, and rollback.
 
-Until all implementation tests and the v0.3.0 release gates pass, the existing conservative setup
-behavior and documented manual upgrade procedure remain the supported fallback.
+States outside this verified upgrade boundary retain the documented manual procedure as their
+supported fallback.

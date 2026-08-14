@@ -1,6 +1,6 @@
 {
   "name": "roku-codex-toolkit",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Codex plugins and cross-platform CLI tooling for Roku development, device automation, and evidence-aware flow verification.",
   "license": "Apache-2.0",
   "type": "module",

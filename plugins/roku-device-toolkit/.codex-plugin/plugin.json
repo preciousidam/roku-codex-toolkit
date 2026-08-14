@@ -1,6 +1,6 @@
 {
   "name": "roku-device-toolkit",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Control Roku development devices and verify flows with explicit evidence.",
   "author": {
     "name": "Ebube Idam",
