@@ -32,6 +32,15 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
     if (!controller.signal.aborted) controller.abort(new Error(`Upgrade cancelled by ${signal}.`));
   });
 }
+process.on("message", (message) => {
+  if (
+    message?.type === "roku-toolkit-cancel" &&
+    ["SIGINT", "SIGTERM"].includes(message.signal) &&
+    !controller.signal.aborted
+  ) {
+    controller.abort(new Error(`Upgrade cancelled by ${message.signal}.`));
+  }
+});
 
 function invocation(command, commandArgs) {
   if (process.platform !== "win32" || !["codex", "git"].includes(command)) {
@@ -238,4 +247,5 @@ try {
   }
 } finally {
   releaseLock();
+  if (process.connected) process.disconnect();
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { spawn } from "node:child_process";
+import { fork } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
@@ -40,9 +40,9 @@ if (!script) {
   usage();
   process.exit(2);
 }
-const child = spawn(process.execPath, [path.join(packageRoot, "scripts", script), ...args], {
+const child = fork(path.join(packageRoot, "scripts", script), args, {
   cwd: process.cwd(),
-  stdio: "inherit",
+  stdio: ["inherit", "inherit", "inherit", "ipc"],
 });
 let interruptedSignal;
 for (const signal of ["SIGINT", "SIGTERM"]) {
@@ -51,6 +51,7 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
     // parent handler installed prevents the wrapper from exiting while the
     // upgrade child performs bounded rollback.
     interruptedSignal ??= signal;
+    if (child.connected) child.send({ type: "roku-toolkit-cancel", signal });
   });
 }
 const result = await new Promise((resolve) => {

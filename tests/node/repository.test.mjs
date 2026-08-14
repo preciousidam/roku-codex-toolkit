@@ -528,6 +528,12 @@ test("npm metadata exposes a side-effect-free public CLI package", () => {
   assert.equal(metadata.publishConfig.access, "public");
   assert.equal(metadata.publishConfig.provenance, true);
   assert.equal(metadata.scripts.postinstall, undefined);
+  const cli = fs.readFileSync(path.join(root, "bin", "roku-codex-toolkit.mjs"), "utf8");
+  const upgrade = fs.readFileSync(path.join(root, "scripts", "upgrade-roku-toolkit.mjs"), "utf8");
+  assert.match(cli, /fork\([\s\S]*"ipc"/);
+  assert.match(cli, /roku-toolkit-cancel/);
+  assert.match(upgrade, /process\.on\("message"/);
+  assert.match(upgrade, /process\.disconnect\(\)/);
   assert.ok(!metadata.files.includes("bin/"));
   assert.ok(metadata.files.includes("bin/roku-codex-toolkit.mjs"));
   assert.ok(!metadata.files.includes("plugins/"));
