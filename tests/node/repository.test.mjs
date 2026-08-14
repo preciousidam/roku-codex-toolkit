@@ -79,6 +79,16 @@ test("published-package smoke matrix preserves host-only release evidence", () =
   assert.ok(!metadata.files.includes("scripts/smoke-published-package.mjs"));
 });
 
+test("packed-package doctor checks do not depend on ambient Codex installations", () => {
+  const script = fs.readFileSync(path.join(root, "scripts", "test-packed-package.mjs"), "utf8");
+  const doctorInvocations = [...script.matchAll(/\[cli, "doctor"([^\]]*)\]/g)];
+  assert.ok(doctorInvocations.length >= 2);
+  for (const invocation of doctorInvocations) {
+    if (/"-h"/.test(invocation[1])) continue;
+    assert.match(invocation[1], /"--no-codex"/);
+  }
+});
+
 test("marketplace entries resolve portably to valid plugin manifests", () => {
   const marketplace = readJson(path.join(root, ".agents/plugins/marketplace.json"));
   assert.equal(marketplace.name, "roku-codex-toolkit");

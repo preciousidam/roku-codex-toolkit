@@ -206,7 +206,7 @@ try {
     FAKE_CODEX_LOG: commandLog,
     FAKE_INSTALLED: "",
   };
-  run(process.execPath, [cli, "doctor"], { cwd: temporary, env: fakeEnvironment });
+  run(process.execPath, [cli, "doctor", "--no-codex"], { cwd: temporary, env: fakeEnvironment });
   fs.rmSync(commandLog, { force: true });
   const doctorHelp = run(process.execPath, [cli, "doctor", "-h"], {
     cwd: temporary,
