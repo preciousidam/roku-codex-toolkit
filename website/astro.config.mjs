@@ -49,6 +49,7 @@ export default defineConfig({
         {
           label: "Releases",
           items: [
+            { label: "v0.3.0 boundary", slug: "v0-3-0" },
             { label: "v0.2.0", slug: "v0-2-0" },
             { label: "v0.1.0", slug: "v0-1-0" },
             { label: "npm distribution", slug: "npm-distribution" },
