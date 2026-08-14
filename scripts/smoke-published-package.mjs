@@ -180,6 +180,28 @@ function assertDeviceConfigAbsent() {
   }
 }
 
+function assertMarketplaceManifest(root, contents) {
+  const manifest = JSON.parse(contents);
+  const expected = ["roku-device-toolkit", "roku-engineering"];
+  const names = Array.isArray(manifest.plugins) ? manifest.plugins.map((plugin) => plugin?.name).sort() : [];
+  if (manifest.name !== packageName || names.join(",") !== expected.join(",")) {
+    throw new Error(`v${version} contains an unexpected marketplace plugin inventory.`);
+  }
+  for (const name of expected) {
+    const entry = manifest.plugins.find((plugin) => plugin.name === name);
+    if (entry.source?.source !== "local" || entry.source?.path !== `./plugins/${name}`) {
+      throw new Error(`v${version} marketplace contains an invalid source for ${name}.`);
+    }
+    const pluginManifest = JSON.parse(fs.readFileSync(
+      path.join(root, "plugins", name, ".codex-plugin", "plugin.json"),
+      "utf8",
+    ));
+    if (pluginManifest.name !== name) {
+      throw new Error(`v${version} marketplace source for ${name} resolves to the wrong plugin manifest.`);
+    }
+  }
+}
+
 function relativeFiles(root) {
   const files = [];
   function visit(directory) {
@@ -315,9 +337,19 @@ async function listPackagedTools(launcher) {
     },
   })}\n`);
   const initializeResponse = await initialize;
-  if (!initializeResponse.result) {
+  const initializeResult = initializeResponse.result;
+  if (
+    initializeResult?.protocolVersion !== "2025-06-18" ||
+    initializeResult.capabilities === null ||
+    typeof initializeResult.capabilities !== "object" ||
+    Array.isArray(initializeResult.capabilities) ||
+    typeof initializeResult.serverInfo?.name !== "string" ||
+    !initializeResult.serverInfo.name ||
+    typeof initializeResult.serverInfo?.version !== "string" ||
+    !initializeResult.serverInfo.version
+  ) {
     await terminateProcessTree();
-    throw new Error(`Packaged MCP initialize failed: ${JSON.stringify(initializeResponse.error)}`);
+    throw new Error(`Packaged MCP initialize returned an invalid result: ${JSON.stringify(initializeResponse)}`);
   }
   child.stdin.write(`${JSON.stringify({
     jsonrpc: "2.0",
@@ -386,7 +418,11 @@ if (args[0] === "--version" || args.join(" ") === "plugin marketplace --help") {
   state.marketplace = null;
   write(state);
 } else if (args[0] === "plugin" && args[1] === "add") {
-  if (!["roku-device-toolkit@roku-codex-toolkit", "roku-engineering@roku-codex-toolkit"].includes(args[2])) process.exit(2);
+  const expected = [
+    ["plugin", "add", "roku-device-toolkit@roku-codex-toolkit"],
+    ["plugin", "add", "roku-engineering@roku-codex-toolkit"],
+  ];
+  if (!expected.some((command) => JSON.stringify(args) === JSON.stringify(command))) process.exit(2);
   const state = read();
   const name = args[2].split("@")[0];
   if (!state.plugins.includes(name)) state.plugins.push(name);
@@ -450,6 +486,12 @@ try {
   for (const lifecycle of ["preinstall", "install", "postinstall", "prepare"]) {
     if (metadata.scripts?.[lifecycle]) throw new Error(`Published package defines an unexpected ${lifecycle} script.`);
   }
+  for (const field of ["dependencies", "optionalDependencies", "bundledDependencies", "bundleDependencies"]) {
+    const value = metadata[field];
+    const empty = value === undefined ||
+      (Array.isArray(value) ? value.length === 0 : value && typeof value === "object" && Object.keys(value).length === 0);
+    if (!empty) throw new Error(`Published package defines unexpected ${field}.`);
+  }
   if (metadata.version !== version) throw new Error(`Installed ${metadata.version}; expected ${version}.`);
   await run("git", [
     "-c", "core.autocrlf=false",
@@ -466,6 +508,7 @@ try {
   if (!publishedMarketplace.equals(taggedMarketplace)) {
     throw new Error(`Published npm and v${version} marketplace manifests differ.`);
   }
+  assertMarketplaceManifest(taggedCheckout, taggedMarketplace.toString("utf8"));
   const toolCount = await listPackagedTools(path.join(
     installedRoot,
     "plugins",

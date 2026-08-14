@@ -66,13 +66,17 @@ test("published-package smoke matrix preserves host-only release evidence", () =
   assert.match(script, /terminateProcessTree\(\)/);
   assert.match(script, /taskkill/);
   assert.match(script, /process\.kill\(-child\.pid, "SIGTERM"\)/);
-  assert.match(script, /await terminateProcessTree\(\);\s*throw new Error\(`Packaged MCP initialize failed/);
+  assert.match(script, /await terminateProcessTree\(\);\s*throw new Error\(`Packaged MCP initialize returned an invalid result/);
   assert.match(script, /npm_config_ignore_scripts: "true"/);
   assert.match(script, /"-c", "core\.autocrlf=false",\s*"clone",[\s\S]*"--branch", `v\$\{version\}`/);
   assert.match(script, /assertIdenticalTree\(installedRoot, taggedCheckout, "plugins"\)/);
   assert.match(script, /taggedMcpTools: taggedToolCount/);
   assert.match(script, /Packaged MCP launcher emitted malformed JSON/);
   assert.match(script, /message === null \|\| typeof message !== "object" \|\| Array\.isArray\(message\)/);
+  assert.match(script, /initializeResult\?\.protocolVersion !== "2025-06-18"/);
+  assert.match(script, /expected\.some\(\(command\) => JSON\.stringify\(args\) === JSON\.stringify\(command\)\)/);
+  assert.match(script, /"dependencies", "optionalDependencies", "bundledDependencies", "bundleDependencies"/);
+  assert.match(script, /assertMarketplaceManifest\(taggedCheckout/);
   assert.match(script, /Packaged MCP launcher did not exit after stdin closed/);
   assert.match(script, /method: "notifications\/initialized"/);
   assert.match(script, /protocolVersion: "2025-06-18"/);
