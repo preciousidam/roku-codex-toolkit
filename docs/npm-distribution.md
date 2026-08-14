@@ -1,6 +1,7 @@
 # npm distribution
 
-Issue #6 tracks the first npm distribution. The npm package is a delivery mechanism for the existing project-neutral Codex plugins, not a rewrite of the Python runtime. Python 3.9+ and Git are external requirements.
+Issue #6 tracks the first npm distribution. The npm package is the delivery mechanism for the
+existing project-neutral Codex plugins. Python 3.9+ and Git remain external requirements.
 
 ## Package boundary
 

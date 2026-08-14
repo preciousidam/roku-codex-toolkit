@@ -4,7 +4,9 @@ Audit date: 2026-08-11. Scope: architecture, security, portability, packaging, u
 
 ## Architecture
 
-The current language boundary is appropriate. Python owns network/device behavior, flow execution, analysis, and the dependency-free MCP server. Node owns Codex installation and cross-platform interpreter launching. A rewrite would add packaging risk without a demonstrated benefit.
+The established language ownership is part of the architecture: Python owns network/device
+behavior, flow execution, analysis, and the dependency-free MCP server. Node.js owns Codex
+installation, packaging, repository integration, and cross-platform interpreter launching.
 
 The two-plugin split is also coherent: device access has materially different permissions and failure modes from repository-only engineering guidance. The MCP server delegates to the same CLI scripts used by skills, which keeps behavior inspectable and reusable.
 

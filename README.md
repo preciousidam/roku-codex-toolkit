@@ -75,8 +75,9 @@ The test suite runs on macOS, Linux, and Windows in CI. That establishes host-si
 
 v0.1.0 established the public plugin baseline. v0.2.0 added npm delivery and stable flow JSON
 contracts. The proposed [v0.3.0 boundary](docs/v0.3.0.md) is limited to configuration reliability
-and recoverable upgrades; it does not rewrite the Python device runtime. See also the
-[clean-install smoke matrix](docs/clean-install-smoke.md), [stabilization audit](docs/stabilization-audit.md),
+and recoverable upgrades while preserving the established Python and Node.js responsibilities. See
+also the [clean-install smoke matrix](docs/clean-install-smoke.md),
+[stabilization audit](docs/stabilization-audit.md),
 [hardware validation matrix](docs/hardware-validation.md), and [contributor guide](CONTRIBUTING.md).
 
 ## Roku tooling landscape
