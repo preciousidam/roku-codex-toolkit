@@ -73,7 +73,7 @@ The test suite runs on macOS, Linux, and Windows in CI. That establishes host-si
 
 ## Project status
 
-v0.1.0 established the public plugin baseline. v0.2.0 adds the npm delivery path and stable flow JSON contracts without rewriting the Python device runtime. See [the v0.2.0 release boundary](docs/v0.2.0.md), [stabilization audit](docs/stabilization-audit.md), [hardware validation matrix](docs/hardware-validation.md), and [contributor guide](CONTRIBUTING.md).
+v0.1.0 established the public plugin baseline. v0.2.0 adds the npm delivery path and stable flow JSON contracts without rewriting the Python device runtime. See [the v0.2.0 release boundary](docs/v0.2.0.md), [clean-install smoke matrix](docs/clean-install-smoke.md), [stabilization audit](docs/stabilization-audit.md), [hardware validation matrix](docs/hardware-validation.md), and [contributor guide](CONTRIBUTING.md).
 
 ## Roku tooling landscape
 

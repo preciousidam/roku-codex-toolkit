@@ -53,6 +53,22 @@ test("documentation links resolve and onboarding preserves public safety boundar
   assert.match(troubleshooting, /port `8085`/);
 });
 
+test("published-package smoke matrix preserves host-only release evidence", () => {
+  const workflow = fs.readFileSync(path.join(root, ".github", "workflows", "ci.yml"), "utf8");
+  const script = fs.readFileSync(path.join(root, "scripts", "smoke-published-package.mjs"), "utf8");
+  const report = fs.readFileSync(path.join(root, "docs", "clean-install-smoke.md"), "utf8");
+  const metadata = readJson(path.join(root, "package.json"));
+  assert.match(workflow, /os: \[ubuntu-latest, macos-latest, windows-latest\]/);
+  assert.match(workflow, /smoke-published-package\.mjs --version 0\.2\.0/);
+  assert.match(script, /tools\.length !== 13/);
+  assert.match(script, /marketplace\.ref !== `v\$\{version\}`/);
+  assert.match(script, /lifecycleScriptsAbsent: "pass"/);
+  assert.match(report, /manual Codex confirmation/i);
+  assert.match(report, /Physical Roku evidence[\s\S]*Not in scope/i);
+  assert.doesNotMatch(report, /(?:https?:\/\/)?(?:\d{1,3}\.){3}\d{1,3}/);
+  assert.ok(!metadata.files.includes("scripts/smoke-published-package.mjs"));
+});
+
 test("marketplace entries resolve portably to valid plugin manifests", () => {
   const marketplace = readJson(path.join(root, ".agents/plugins/marketplace.json"));
   assert.equal(marketplace.name, "roku-codex-toolkit");

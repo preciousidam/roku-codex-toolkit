@@ -52,6 +52,7 @@ export default defineConfig({
             { label: "v0.2.0", slug: "v0-2-0" },
             { label: "v0.1.0", slug: "v0-1-0" },
             { label: "npm distribution", slug: "npm-distribution" },
+            { label: "Clean-install smoke matrix", slug: "clean-install-smoke" },
             { label: "License evaluation", slug: "license-evaluation" },
           ],
         },
