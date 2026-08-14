@@ -5,6 +5,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import process from "node:process";
+import readline from "node:readline";
 
 import { findPython } from "./runtime-support.mjs";
 
@@ -95,36 +96,69 @@ async function listPackagedTools(launcher) {
     env: smokeEnvironment,
     stdio: ["pipe", "pipe", "pipe"],
   });
-  let stdout = "";
   let stderr = "";
-  child.stdout.setEncoding("utf8");
   child.stderr.setEncoding("utf8");
-  child.stdout.on("data", (chunk) => { stdout += chunk; });
   child.stderr.on("data", (chunk) => { stderr += chunk; });
-  child.stdin.end([
-    JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }),
-    JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }),
-    "",
-  ].join("\n"));
-  const exitCode = await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      child.kill();
-      reject(new Error("Packaged MCP launcher timed out."));
-    }, 30_000);
+  const responses = new Map();
+  const waiters = new Map();
+  const lines = readline.createInterface({ input: child.stdout });
+  lines.on("line", (line) => {
+    const message = JSON.parse(line);
+    const waiter = waiters.get(message.id);
+    if (waiter) {
+      waiters.delete(message.id);
+      waiter(message);
+    } else {
+      responses.set(message.id, message);
+    }
+  });
+  const exit = new Promise((resolve, reject) => {
     child.once("error", (error) => {
-      clearTimeout(timer);
       reject(error);
     });
-    child.once("close", (code) => {
-      clearTimeout(timer);
-      resolve(code);
-    });
+    child.once("close", resolve);
   });
+
+  function responseFor(id) {
+    if (responses.has(id)) return Promise.resolve(responses.get(id));
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        child.off("close", onExit);
+        waiters.delete(id);
+        reject(new Error(`Packaged MCP launcher timed out waiting for response ${id}.`));
+      }, 30_000);
+      const onExit = (code) => {
+        clearTimeout(timer);
+        waiters.delete(id);
+        reject(new Error(`Packaged MCP launcher exited with ${code} before response ${id}:\n${stderr}`));
+      };
+      child.once("close", onExit);
+      waiters.set(id, (message) => {
+        clearTimeout(timer);
+        child.off("close", onExit);
+        resolve(message);
+      });
+    });
+  }
+
+  const initialize = responseFor(1);
+  child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} })}\n`);
+  const initializeResponse = await initialize;
+  if (!initializeResponse.result) {
+    throw new Error(`Packaged MCP initialize failed: ${JSON.stringify(initializeResponse.error)}`);
+  }
+  const toolsList = responseFor(2);
+  child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} })}\n`);
+  const toolsResponse = await toolsList;
+  child.stdin.end();
+  const exitCode = await exit;
   if (exitCode !== 0) throw new Error(`Packaged MCP launcher failed:\n${stderr}`);
-  const messages = stdout.trim().split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line));
-  const tools = messages.find((message) => message.id === 2)?.result?.tools;
+  const tools = toolsResponse.result?.tools;
   if (!Array.isArray(tools) || tools.length !== 13) {
-    throw new Error(`Packaged MCP server exposed ${tools?.length ?? "no"} tools; expected 13.`);
+    throw new Error(
+      `Packaged MCP server exposed ${tools?.length ?? "no"} tools; expected 13. ` +
+      `Response: ${JSON.stringify(toolsResponse)}`,
+    );
   }
   return tools.length;
 }
