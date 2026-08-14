@@ -25,7 +25,11 @@ const python = pythonCandidates.find(({ command, args }) => {
 });
 if (!nodeOnly && !python) throw new Error("Python 3.9 or newer is required for validation.");
 
-if (!pythonOnly) run("node", ["--test", "tests/node/repository.test.mjs"], "Node tests");
+if (!pythonOnly) run(
+  "node",
+  ["--test", "tests/node/repository.test.mjs", "tests/node/upgrade-state.test.mjs"],
+  "Node tests",
+);
 if (!nodeOnly) {
   run(python.command, [...python.args, "-m", "unittest", "discover", "-s", "tests/python", "-p", "test_*.py"], "Python tests");
 }
