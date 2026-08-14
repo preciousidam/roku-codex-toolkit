@@ -149,3 +149,28 @@ test("rollback continues and reports independent recovery failures", async () =>
     },
   );
 });
+
+test("cancellation switches operations into rollback mode before recovery", async () => {
+  const calls = [];
+  let rollingBack = false;
+  const operations = {
+    beginRollback: () => { rollingBack = true; calls.push("beginRollback"); },
+    inspect: async () => assert.equal(rollingBack, true),
+    removePlugin: async () => {
+      if (!rollingBack) throw new Error("cancelled");
+    },
+    removeMarketplace: async () => {},
+    addMarketplace: async () => {},
+    addPlugin: async () => {},
+  };
+  await assert.rejects(
+    executeUpgradeTransaction({
+      classification: classifyUpgradeState(healthy),
+      operations,
+      verifyTarget: async () => {},
+      verifySnapshot: async () => assert.equal(rollingBack, true),
+    }),
+    /previous toolkit version was restored/,
+  );
+  assert.deepEqual(calls, ["beginRollback"]);
+});

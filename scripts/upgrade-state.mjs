@@ -106,6 +106,7 @@ export async function executeUpgradeTransaction({ classification, operations, ve
   } catch (error) {
     if (!mutationStarted) throw error;
     const rollbackErrors = [];
+    operations.beginRollback?.();
     const attempt = async (description, action) => {
       try {
         await action();

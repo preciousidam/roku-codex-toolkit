@@ -53,6 +53,8 @@
     "scripts/doctor-roku-toolkit.mjs",
     "scripts/runtime-support.mjs",
     "scripts/setup-roku-toolkit.mjs",
+    "scripts/upgrade-roku-toolkit.mjs",
+    "scripts/upgrade-state.mjs",
     "scripts/validate-install.mjs",
     "README.md",
     "LICENSE"

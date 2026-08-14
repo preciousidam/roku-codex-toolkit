@@ -47,8 +47,8 @@ Restart Codex and open a new task. Confirm that both plugins appear:
 codex plugin list --json
 ```
 
-Do not rerun setup over an existing toolkit installation. Follow the explicit upgrade procedure in
-the [README](../README.md#install-with-npm) instead.
+Do not rerun setup over an existing toolkit installation. Use the guarded `upgrade` command described
+in the [README](../README.md#install-with-npm) instead.
 
 ## 3. Prepare a Roku development device
 

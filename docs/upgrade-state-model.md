@@ -15,8 +15,9 @@ The installer may use only bounded, read-only inspection before deciding whether
   enabled state.
 - A Git marketplace root contains Codex's `.codex-marketplace-install.json` receipt with
   `source_type`, `source`, `ref_name`, `sparse_paths`, and `revision`.
-- Bounded Git commands can confirm that the root is a clean checkout, its `HEAD` equals the receipt
-  revision, and the recorded ref resolves to that revision.
+- Bounded Git commands can confirm that the root has no changes other than Codex's expected
+  untracked receipt, its `HEAD` equals the receipt revision, and the recorded ref resolves to that
+  revision.
 - A bounded remote lookup can confirm that the target release tag exists before mutation.
 
 The receipt is required because the marketplace-list response does not expose the configured Git

@@ -227,6 +227,10 @@ try {
   if (fs.existsSync(commandLog)) {
     throw new Error("setup -h changed or inspected Codex state.");
   }
+  run(process.execPath, [cli, "upgrade", "-h"], { cwd: temporary, env: fakeEnvironment });
+  if (fs.existsSync(commandLog)) {
+    throw new Error("upgrade -h changed or inspected Codex state.");
+  }
   const unknownSetupOption = runExpectFailure(process.execPath, [cli, "setup", "--skip-confg"], {
     cwd: temporary,
     env: fakeEnvironment,
