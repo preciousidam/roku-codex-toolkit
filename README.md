@@ -2,6 +2,10 @@
 
 Reusable Codex plugins for Roku development, device automation, flow verification, diagnostics, accessibility review, and release preparation.
 
+[Documentation](https://preciousidam.github.io/roku-codex-toolkit/) ·
+[Plugin guide](https://preciousidam.github.io/roku-codex-toolkit/marketplace/) ·
+[npm](https://www.npmjs.com/package/roku-codex-toolkit)
+
 ## Plugins
 
 - `roku-device-toolkit`: Roku ECP controls, developer-mode sideloading, screenshots, console capture, an MCP server, and evidence-backed flow verification.
@@ -90,7 +94,8 @@ The proposed upgrade safety boundary is documented in the
 The toolkit complements editor-oriented Roku tooling: it gives Codex bounded device operations, evidence-aware flow execution, and repository review workflows. It does not replace an editor, language server, debugger, packaging toolchain, or Roku's developer portal. See [the tooling comparison](docs/tooling-comparison.md).
 
 For the public feature matrix, plugin selection guide, capability inventory, and sanitized media, see
-[marketplace presentation](docs/marketplace.md).
+the hosted [plugin guide](https://preciousidam.github.io/roku-codex-toolkit/marketplace/).
+Its Markdown source remains available in [docs/marketplace.md](docs/marketplace.md).
 
 ## Security
 

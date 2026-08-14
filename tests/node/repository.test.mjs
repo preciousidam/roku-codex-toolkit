@@ -38,6 +38,10 @@ test("documentation links resolve and onboarding preserves public safety boundar
 
   const gettingStarted = fs.readFileSync(path.join(root, "docs", "getting-started.md"), "utf8");
   const troubleshooting = fs.readFileSync(path.join(root, "docs", "troubleshooting.md"), "utf8");
+  const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
+  const metadata = readJson(path.join(root, "package.json"));
+  assert.match(readme, /https:\/\/preciousidam\.github\.io\/roku-codex-toolkit\/marketplace\//);
+  assert.equal(metadata.homepage, "https://preciousidam.github.io/roku-codex-toolkit/");
   assert.match(gettingStarted, /npx --yes roku-codex-toolkit@latest doctor/);
   assert.match(gettingStarted, /npx --yes roku-codex-toolkit@latest setup/);
   assert.match(gettingStarted, /ROKU_TOOLKIT_INTENTIONAL_MISSING_CHECKPOINT_7B2E/);
