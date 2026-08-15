@@ -81,12 +81,13 @@ The test suite runs on macOS, Linux, and Windows in CI. That establishes host-si
 ## Project status
 
 v0.1.0 established the public plugin baseline. v0.2.0 added npm delivery and stable flow JSON
-contracts. The proposed [v0.3.0 boundary](docs/v0.3.0.md) is limited to configuration reliability
-and recoverable upgrades while preserving the established Python and Node.js responsibilities. See
+contracts. [v0.3.0](docs/v0.3.0.md) added configuration reliability and recoverable upgrades while
+preserving the established Python and Node.js responsibilities. v0.3.1 publishes the documentation
+discoverability improvements described in its [release notes](docs/v0.3.1.md). See
 also the [clean-install smoke matrix](docs/clean-install-smoke.md),
 [stabilization audit](docs/stabilization-audit.md),
 [hardware validation matrix](docs/hardware-validation.md), and [contributor guide](CONTRIBUTING.md).
-The proposed upgrade safety boundary is documented in the
+The upgrade safety boundary is documented in the
 [transactional upgrade state model](docs/upgrade-state-model.md).
 
 ## Roku tooling landscape
