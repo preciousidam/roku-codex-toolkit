@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import stat
 import subprocess
 import sys
@@ -15,17 +16,100 @@ SCHEMA_VALIDATOR = ROOT / "tests/node/schema-validator.mjs"
 
 
 class FlowCliTests(unittest.TestCase):
-    def run_flow(self, scenario, evidence, scenario_filename="scenario.json"):
+    def copy_plugin_runtime(self, destination):
+        source_plugin = ROOT / "plugins/roku-device-toolkit"
+        shutil.copytree(source_plugin / "scripts", destination / "scripts")
+        shutil.copytree(source_plugin / "skills", destination / "skills")
+
+    def run_flow(
+        self,
+        scenario,
+        evidence,
+        scenario_filename="scenario.json",
+        device_override=True,
+        flow=FLOW,
+    ):
         scenario_path = evidence.parent / scenario_filename
         scenario_path.write_text(json.dumps(scenario), encoding="utf-8")
-        env = {**os.environ, "ROKU_DEVICE_TOOL": str(DEVICE)}
+        env = dict(os.environ)
+        if device_override:
+            env["ROKU_DEVICE_TOOL"] = str(DEVICE)
+        else:
+            env.pop("ROKU_DEVICE_TOOL", None)
         completed = subprocess.run(
-            [sys.executable, str(FLOW), "--scenario", str(scenario_path), "--evidence-dir", str(evidence),
+            [sys.executable, str(flow), "--scenario", str(scenario_path), "--evidence-dir", str(evidence),
              "--host", "127.0.0.1", "--dry-run"],
             text=True, capture_output=True, env=env, timeout=20,
         )
         report_path = evidence / "report.json"
         return completed, json.loads(report_path.read_text()) if report_path.exists() else None
+
+    def test_versioned_plugin_cache_resolves_sibling_device_tool(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            cache_root = Path(temporary) / "plugins/cache/roku-device-toolkit/0.2.1"
+            self.copy_plugin_runtime(cache_root)
+            flow = cache_root / "skills/roku-flow-verifier/scripts/run_flow.py"
+
+            completed, report = self.run_flow(
+                {"steps": [{"action": "query", "kind": "active-app", "contains": "dev"}]},
+                Path(temporary) / "evidence",
+                device_override=False,
+                flow=flow,
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertIsNotNone(report)
+
+    def test_standalone_skill_install_resolves_sibling_device_tool(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            standalone_root = Path(temporary) / ".codex"
+            self.copy_plugin_runtime(standalone_root)
+            flow = standalone_root / "skills/roku-flow-verifier/scripts/run_flow.py"
+
+            completed, report = self.run_flow(
+                {"steps": [{"action": "query", "kind": "info", "contains": "model"}]},
+                Path(temporary) / "evidence",
+                device_override=False,
+                flow=flow,
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertIsNotNone(report)
+
+    def test_missing_device_tool_reports_every_searched_path(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            cache_root = Path(temporary) / "plugins/cache/roku-device-toolkit/0.2.1"
+            physical_flow = cache_root / "skills/roku-flow-verifier/scripts/run_flow.py"
+            physical_flow.parent.mkdir(parents=True)
+            shutil.copy2(FLOW, physical_flow)
+            shutil.copytree(ROOT / "plugins/roku-device-toolkit/scripts", cache_root / "scripts")
+            linked_flow = Path(temporary) / ".codex/skills/roku-flow-verifier/scripts/run_flow.py"
+            linked_flow.parent.mkdir(parents=True)
+            linked_flow.symlink_to(physical_flow)
+            missing_override = Path(temporary) / "explicit/missing-device.py"
+            scenario = {"steps": [{"action": "query", "kind": "info", "contains": "model"}]}
+            scenario_path = Path(temporary) / "scenario.json"
+            scenario_path.write_text(json.dumps(scenario), encoding="utf-8")
+            env = {
+                **os.environ,
+                "ROKU_DEVICE_TOOL": str(missing_override),
+                "ROKU_DEV_PASSWORD": "must-not-appear",
+            }
+
+            completed = subprocess.run(
+                [sys.executable, str(linked_flow), "--scenario", str(scenario_path),
+                 "--evidence-dir", str(Path(temporary) / "evidence"), "--host", "127.0.0.1",
+                 "--dry-run"],
+                text=True, capture_output=True, env=env, timeout=20,
+            )
+
+            physical_sibling = cache_root / "skills/roku-device-operator/scripts/roku_device.py"
+            linked_sibling = Path(temporary) / ".codex/skills/roku-device-operator/scripts/roku_device.py"
+            self.assertNotEqual(completed.returncode, 0)
+            self.assertIn(str(missing_override), completed.stderr)
+            self.assertIn(str(physical_sibling.resolve()), completed.stderr)
+            self.assertIn(str(linked_sibling), completed.stderr)
+            self.assertNotIn("must-not-appear", completed.stderr)
 
     def assert_report_schema(self, report_path):
         validation = subprocess.run(
