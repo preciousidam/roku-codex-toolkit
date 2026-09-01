@@ -107,7 +107,7 @@ class FlowCliTests(unittest.TestCase):
             linked_sibling = Path(temporary) / ".codex/skills/roku-device-operator/scripts/roku_device.py"
             self.assertNotEqual(completed.returncode, 0)
             self.assertIn(str(missing_override), completed.stderr)
-            self.assertIn(str(physical_sibling), completed.stderr)
+            self.assertIn(str(physical_sibling.resolve()), completed.stderr)
             self.assertIn(str(linked_sibling), completed.stderr)
             self.assertNotIn("must-not-appear", completed.stderr)
 
