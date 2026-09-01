@@ -11,11 +11,48 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Mapping, Optional
 
 
-DEFAULT_DEVICE_TOOL = Path(__file__).resolve().parents[2] / "roku-device-operator/scripts/roku_device.py"
-DEVICE_TOOL = Path(os.environ.get("ROKU_DEVICE_TOOL", str(DEFAULT_DEVICE_TOOL))).expanduser()
+def device_tool_candidates(
+    script_file: Path = Path(__file__), environ: Mapping[str, str] = os.environ
+) -> list[Path]:
+    """Return device-tool locations in precedence order.
+
+    Keep both the physical and lexical script locations: installed plugins may
+    expose skills through symlinks, while standalone installs keep sibling
+    skills directly under ``~/.codex/skills``.
+    """
+    candidates = []
+    override = environ.get("ROKU_DEVICE_TOOL")
+    if override:
+        candidates.append(Path(override).expanduser())
+
+    resolved_script = script_file.resolve()
+    lexical_script = script_file.absolute()
+    candidates.extend(
+        location.parents[2] / "roku-device-operator/scripts/roku_device.py"
+        for location in (resolved_script, lexical_script)
+    )
+
+    unique = []
+    seen = set()
+    for candidate in candidates:
+        key = os.path.normcase(os.path.abspath(candidate))
+        if key not in seen:
+            seen.add(key)
+            unique.append(candidate)
+    return unique
+
+
+def resolve_device_tool(
+    script_file: Path = Path(__file__), environ: Mapping[str, str] = os.environ
+) -> tuple[Optional[Path], list[Path]]:
+    searched = device_tool_candidates(script_file, environ)
+    return next((candidate for candidate in searched if candidate.is_file()), None), searched
+
+
+DEVICE_TOOL, DEVICE_TOOL_SEARCH_PATHS = resolve_device_tool()
 PLUGIN_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(PLUGIN_ROOT / "scripts"))
 from roku_artifacts import write_private_text  # noqa: E402
@@ -198,8 +235,9 @@ def main() -> None:
         host = resolve_target(selected_host)
     except (ValueError, RuntimeError) as error:
         raise SystemExit(str(error)) from error
-    if not DEVICE_TOOL.is_file():
-        raise SystemExit(f"Roku device operator is missing: {DEVICE_TOOL}")
+    if DEVICE_TOOL is None:
+        searched = "\n".join(f"  - {path}" for path in DEVICE_TOOL_SEARCH_PATHS)
+        raise SystemExit(f"Roku device operator is missing. Searched:\n{searched}")
 
     evidence = args.evidence_dir.resolve()
     ensure_private_directory(evidence)
