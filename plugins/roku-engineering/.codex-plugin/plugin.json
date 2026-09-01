@@ -1,6 +1,6 @@
 {
   "name": "roku-engineering",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Diagnose Roku failures, review accessibility, and validate releases.",
   "author": {
     "name": "Ebube Idam",

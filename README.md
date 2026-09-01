@@ -82,8 +82,9 @@ The test suite runs on macOS, Linux, and Windows in CI. That establishes host-si
 
 v0.1.0 established the public plugin baseline. v0.2.0 added npm delivery and stable flow JSON
 contracts. [v0.3.0](docs/v0.3.0.md) added configuration reliability and recoverable upgrades while
-preserving the established Python and Node.js responsibilities. v0.3.1 publishes the documentation
-discoverability improvements described in its [release notes](docs/v0.3.1.md). See
+preserving the established Python and Node.js responsibilities. v0.3.1 published documentation
+discoverability improvements. v0.3.2 fixes installed flow-verifier device-tool discovery as
+described in its [release notes](docs/v0.3.2.md). See
 also the [clean-install smoke matrix](docs/clean-install-smoke.md),
 [stabilization audit](docs/stabilization-audit.md),
 [hardware validation matrix](docs/hardware-validation.md), and [contributor guide](CONTRIBUTING.md).
